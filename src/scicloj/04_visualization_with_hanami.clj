@@ -107,7 +107,7 @@ TO-DO need to clean all this:"]
   maps
   (#(hanami-common/xform
      hanami-templates/line-chart
-     :WIDTH 700 :HEIGHT 500
+     :WIDTH 600 :HEIGHT 500
      :ENCODINGS {:X :x
                  :Y :y}
      :DATA %))
@@ -140,5 +140,65 @@ One nice feature of Matplotlib is the ability to save figures in a wide variety 
 
 (save-plot! my-figure "my_figure.svg")
 
+["TO-DO render png"]
+
+["We now have a file called my_figure.png in the current working directory:"]
+
+^kind/hiccup
+[:pre "!ls -lh my_figure.png"] 
 
 
+["To confirm that it contains what we think it contains, let's use the IPython Image object to display the contents of this file:"]
+
+^kind/hiccup
+[:pre "from IPython.display import Image
+Image('my_figure.png')"] 
+
+["In savefig(), the file format is inferred from the extension of the given filename. Depending on what backends you have installed, many different file formats are available. The list of supported file types can be found for your system by using the following method of the figure canvas object:"]
+
+^kind/hiccup
+[:pre "fig.canvas.get_supported_filetypes()"] 
+
+^kind/hiccup
+[:pre "{'eps': 'Encapsulated Postscript',
+ 'jpeg': 'Joint Photographic Experts Group',
+ 'jpg': 'Joint Photographic Experts Group',
+ 'pdf': 'Portable Document Format',
+ 'pgf': 'PGF code for LaTeX',
+ 'png': 'Portable Network Graphics',
+ 'ps': 'Postscript',
+ 'raw': 'Raw RGBA bitmap',
+ 'rgba': 'Raw RGBA bitmap',
+ 'svg': 'Scalable Vector Graphics',
+ 'svgz': 'Scalable Vector Graphics',
+ 'tif': 'Tagged Image File Format',
+ 'tiff': 'Tagged Image File Format'}"]
+
+["Note that when saving your figure, it's not necessary to use plt.show() or related commands discussed earlier."]
+
+["## Two Interfaces for the Price of One¶
+
+A potentially confusing feature of Matplotlib is its dual interfaces: a convenient MATLAB-style state-based interface, and a more powerful object-oriented interface. We'll quickly highlight the differences between the two here.
+
+### MATLAB-style interface
+
+Matplotlib was originally written as a Python alternative for MATLAB users, and much of its syntax reflects that fact. The MATLAB-style tools are contained in the pyplot (plt) interface. For example, the following code will probably look quite familiar to MATLAB users:"]
+
+^kind/hiccup
+[:pre "plt.figure()  # create a plot figure
+
+# create the first of two panels and set current axis
+plt.subplot(2, 1, 1) # (rows, columns, panel number)
+plt.plot(x, np.sin(x))
+
+# create the second panel and set current axis
+plt.subplot(2, 1, 2)
+plt.plot(x, np.cos(x));"]
+
+
+^kind/vega
+(->
+ my-figure
+ (assoc :height 150)
+ (assoc-in [:encoding :row] {:field :label
+                          :type "nominal"}))
