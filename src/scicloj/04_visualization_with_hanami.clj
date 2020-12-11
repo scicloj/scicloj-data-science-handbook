@@ -1,7 +1,7 @@
 (ns scicloj.04-visualization-with-hanami
   (:require [notespace.api :as notespace]
             [notespace.kinds :as kind]
-            [clojure.java.io :as io]))
+            [tech.v3.datatype.functional :as dtype]))
 
 ;; Notespace
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -40,7 +40,8 @@
          '[tablecloth.api :as tablecloth]
          '[scicloj.helpers :as helpers]
          '[aerial.hanami.common :as hanami-common]
-         '[aerial.hanami.templates :as hanami-templates])
+         '[aerial.hanami.templates :as hanami-templates]
+         '[tech.v3.datatype.functional :as dtype])
 
 
 
@@ -84,45 +85,47 @@ Plotting interactively within an IPython notebook can be done with the %matplotl
 
 After running this command (it needs to be done only once per kernel/session), any cell within the notebook that creates a plot will embed a PNG image of the resulting graphic:
 
-TO-DO need to clean all this:"
+TO-DO need to clean all this:"]
 
- ]
+(defn maps
+  [row]
+  (map (fn [[f label x]]
+         {:x x :label label :y (f x)}) row))
 
-(def sin #(Math/sin %))
-(def cos #(Math/cos %))
-
-(defn row [x f l]
-  {:x x
-   :y (f x)
-   :label l})
-
-(defn plot-data [coll]
-  (into (map (fn [n] (row n sin "-")) coll)
-        (map (fn [n] (row n cos "--")) coll)))
+(defn add-x
+  [coll]
+  (let [x (range 0 10 1/10)]
+   (map #(conj %2 %1)
+        (mapcat #(repeat 2 %) x) coll)))
 
 (def my-figure
-  (->
- (range 1 10 1/10)
- plot-data
- (#(hanami-common/xform
-    hanami-templates/line-chart
-    :WIDTH 700 :HEIGHT 500
-    :ENCODINGS {:X :x
-                :Y :y}
-    :DATA %))
- (assoc-in [:encoding :strokeDash]
-           {:field :label
-            :type "nominal"})))
+ (->>
+  (interleave
+   (repeat 100 [dtype/sin "sin"])
+   (repeat 100 [dtype/cos "cos"]))
+  add-x
+  maps
+  (#(hanami-common/xform
+     hanami-templates/line-chart
+     :WIDTH 700 :HEIGHT 500
+     :ENCODINGS {:X :x
+                 :Y :y}
+     :DATA %))
+  (#(assoc-in % [:encoding :strokeDash]
+              {:field :label
+               :type "nominal"}))))
 
 ^kind/vega
 my-figure
 
-"### Saving Figures to File
+["### Saving Figures to File
 
-One nice feature of Matplotlib is the ability to save figures in a wide variety of formats. Saving a figure can be done using the savefig() command. For example, to save the previous figure as a PNG file, you can run this:"
+One nice feature of Matplotlib is the ability to save figures in a wide variety of formats. Saving a figure can be done using the savefig() command. For example, to save the previous figure as a PNG file, you can run this:"]
 
 (require '[applied-science.darkstar :as darkstar]
          '[clojure.data.json :as json])
+
+
 
 (defn save-plot! [m & [filename]]
   (let [svg-render (if (= (:MODE m) "vega")
