@@ -35,16 +35,21 @@ The following is based on [an example of the Vega-Lite tutorials](https://vega.g
      {:x {:field {:repeat "column"}, :type "quantitative"},
       :y {:field {:repeat "row"}, :type "quantitative", :axis {:minExtent 30}},
       :color
-      {:condition {:selection "brush", :field "Origin", :type "nominal"},
+      {:condition {:selection "brush", :field :COLOR-FIELD, :type "nominal"},
        :value     "grey"}}}}))
 
 ["Let us try it (automatically enjoying the Hanami theme, etc.)."]
 
+(require '[scicloj.data :as data]
+         '[tablecloth.api :as tablecloth])
+
 ^kinds/vega
 (hc/xform
  interactive-scatterplot-matrix
- :UDATA "data/cars.json" ; available as one of the standard Vega example datasets
- :ROWS ["Horsepower" "Acceleration" "Miles_per_Gallon"],
- :COLUMNS ["Miles_per_Gallon" "Acceleration" "Horsepower"])
+ :VALDATA (-> data/iris
+              (tablecloth/rows :as-maps))
+ :ROWS [:sepal-length :sepal-width :petal-length :petal-width],
+ :COLUMNS [:sepal-length :sepal-width :petal-length :petal-width]
+ :COLOR-FIELD :species)
 
 ["Try to interact with it!"]
