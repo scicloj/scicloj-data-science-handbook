@@ -18,12 +18,3 @@
 
 ^kind/dataset
 iris
-
-["Looking into the Iris data visually"]
-
-(require '[tech.viz.vega :as viz])
-
-^kind/vega
-(-> iris
-    (tablecloth/rows :as-maps)
-    (viz/scatterplot :sepal-width :sepal-length))
