@@ -82,10 +82,12 @@ Plotting interactively within an IPython notebook can be done with the %matplotl
     %matplotlib notebook will lead to interactive plots embedded within the notebook
     %matplotlib inline will lead to static images of your plot embedded in the notebook
 
-After running this command (it needs to be done only once per kernel/session), any cell within the notebook that creates a plot will embed a PNG image of the resulting graphic:"
+After running this command (it needs to be done only once per kernel/session), any cell within the notebook that creates a plot will embed a PNG image of the resulting graphic:
+
+TO-DO need to clean all this:"
+
  ]
 
-;; TO-DO need to clean all this:
 (def sin #(Math/sin %))
 (def cos #(Math/cos %))
 
@@ -98,24 +100,42 @@ After running this command (it needs to be done only once per kernel/session), a
   (into (map (fn [n] (row n sin "-")) coll)
         (map (fn [n] (row n cos "--")) coll)))
 
-^kind/vega
-(->
+(def my-figure
+  (->
  (range 1 10 1/10)
  plot-data
  (#(hanami-common/xform
     hanami-templates/line-chart
-    :WIDTH 1000 :HEIGHT 500
+    :WIDTH 700 :HEIGHT 500
     :ENCODINGS {:X :x
                 :Y :y}
     :DATA %))
  (assoc-in [:encoding :strokeDash]
            {:field :label
-            :type "nominal"}))
+            :type "nominal"})))
+
+^kind/vega
+my-figure
+
+"### Saving Figures to File
+
+One nice feature of Matplotlib is the ability to save figures in a wide variety of formats. Saving a figure can be done using the savefig() command. For example, to save the previous figure as a PNG file, you can run this:"
+
+(require '[applied-science.darkstar :as darkstar]
+         '[clojure.data.json :as json])
+
+(defn save-plot! [m & [filename]]
+  (let [svg-render (if (= (:MODE m) "vega")
+                 darkstar/vega-spec->svg
+                 darkstar/vega-lite-spec->svg)]
+   (->>
+    m
+    json/write-str
+    svg-render
+    (spit (or filename "plot.svg")))))
 
 
-
-
-
+(save-plot! my-figure "my_figure.svg")
 
 
 
