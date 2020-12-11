@@ -30,29 +30,3 @@
 ["This chapter will dive into practical aspects of machine learning using the Clojure libraries and tools (TODO).
 
 Some parts of it are based on code from the [Python Data Science Handbook](https://github.com/jakevdp/PythonDataScienceHandbook) by Jake VanderPlas."]
-
-["## Intro"
-
- "Getting the Iris dataset"]
-
-(require '[clojure.java.io :as io]
-         '[tablecloth.api :as tablecloth]
-         '[scicloj.helpers :as helpers])
-
-(def iris-dataset
-  (-> "data/iris.csv"
-      io/resource
-      (.toString)
-      (tablecloth/dataset {:key-fn helpers/->tidy-name})))
-
-^kind/dataset
-iris-dataset
-
-["Looking into the Iris data visually"]
-
-(require '[tech.viz.vega :as viz])
-
-^kind/vega
-(-> iris-dataset
-    (tablecloth/rows :as-maps)
-    (viz/scatterplot :sepal-width :sepal-length))
