@@ -118,14 +118,14 @@ np.linspace(0, 1, 5)
 np.random.random((3, 3))
 ```"]
 (require '[fastmath.random :as fm.rand])
-(dtype/emap (fn [_] (fm.rand/frandom (fm.rand/distribution :uniform-real {:lower 0 :upper 1 }))) nil
+(dtype/emap (fn [_] (fm.rand/frand)) nil
             (dtt/new-tensor [3 3]))
 
 ["Create a 3x3 array of normally distributed random values with mean 0 and standard deviation 1
 ```python
 np.random.normal(0, 1, (3, 3))
 ```"]
-(dtype/emap (fn [_] (fm.rand/frandom (fm.rand/distribution :normal {:mu 0 :sd 1}))) nil
+(dtype/emap (fn [_] (fm.rand/grand 0 1)) nil
             (dtt/new-tensor [3 3]))
 
 ["Create a 3x3 array of random integers in the interval [0, 10]
