@@ -1,15 +1,30 @@
-# data-science-handbook
+# SciCloj Clojure Data Science Handbook
+A reference style resource to help build understanding in how to use Clojure for data science projects.
 
-FIXME: my new application.
+Inspired by the [Python Data Science Handbook](https://jakevdp.github.io/PythonDataScienceHandbook/), the project creates a series of journal notebooks based on the chapters in this book.
 
-## Installation
+Notebooks are created with the [scicloj/notespace library](https://github.com/scicloj/notespace), which generates a notebook for a specific Clojure namespace.  Notebooks can be dynamically generated during development.  Static versions of the notebooks will be saved in the `docs/` directory and served via GitHub pages.
 
-Download from https://github.com/scicloj/data-science-handbook
+
+## Getting started
+
+Clone the project from https://github.com/scicloj/data-science-handbook
 
 ## Usage
+Open the project in a [Clojure aware editor](https://practicalli.github.io/clojure/clojure-editors/) and start a REPL (either on the command line or from the editor itself).
 
-FIXME: explanation
+Start the Notespace browser by evaluating the command `(notespace/init-with-browser)` in the editor attached to the REPL.
 
+Start writing the Clojure top-level forms that make up your notebook.
+
+Evaluate `(notespace/eval-this-notespace)` to evaluate all the top-level forms once in the notespace.
+
+Evaluate `(notespace/listen)` to update the notespace each time the file is saved.
+
+If you wish to clear the notebook, evaluate `(notespace/init)`
+
+
+## Other ways to use the project
 Run the project directly:
 
     $ clojure -M -m scicloj.data-science-handbook
@@ -26,25 +41,7 @@ Run that uberjar:
 
     $ java -jar data-science-handbook.jar
 
-## Options
-
-FIXME: listing of options this app accepts.
-
-## Examples
-
-...
-
-### Bugs
-
-...
-
-### Any Other Sections
-### That You Think
-### Might be Useful
 
 ## License
-
-Copyright © 2020 Practicalli
-
-Distributed under the Eclipse Public License either version 1.0 or (at
-your option) any later version.
+Copyright © 2020 SciCloj
+Distributed under the Creative Commons Attribution Share-Alike 4.0 International
