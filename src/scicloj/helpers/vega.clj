@@ -1,5 +1,5 @@
 (ns scicloj.helpers.vega
-  (:require [notespace.kinds :as kinds]))
+  (:require [notespace.kinds :as kind]))
 
 (require '[aerial.hanami.common :as hc]
          '[aerial.hanami.templates :as ht]
@@ -43,7 +43,7 @@ The following is based on [an example of the Vega-Lite tutorials](https://vega.g
 (require '[scicloj.data :as data]
          '[tablecloth.api :as tablecloth])
 
-^kinds/vega
+^kind/vega
 (hc/xform
  interactive-scatterplot-matrix
  :VALDATA (-> data/iris
