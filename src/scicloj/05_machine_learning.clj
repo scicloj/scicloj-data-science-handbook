@@ -1,7 +1,6 @@
 (ns scicloj.05-machine-learning
   (:require [notespace.api :as notespace]
-            [notespace.kinds :as kind]
-            [clojure.java.io :as io]))
+            [notespace.kinds :as kind]))
 
 ;; Notespace
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -28,7 +27,9 @@
 
 ["# Chapter 05 - Machine Learning"]
 
-["This chapter will dive into practical aspects of machine learning using the Clojure libraries and toold (TODO)"]
+["This chapter will dive into practical aspects of machine learning using the Clojure libraries and tools (TODO).
+
+Some parts of it are based on code from the [Python Data Science Handbook](https://github.com/jakevdp/PythonDataScienceHandbook) by Jake VanderPlas."]
 
 ["## Intro"
 
