@@ -93,7 +93,7 @@ TO-DO need to clean all this:"]
    (into (map #(identity {:x % :y (dtype-func/cos %) :label "cos"}) x-range))
    (#(hanami-common/xform
       hanami-templates/line-chart
-      :WIDTH 600 :HEIGHT 500 :X :x :Y :y :DATA %))
+     :DATA %))
    (#(assoc-in %
                [:encoding :strokeDash]
                {:field :label
@@ -223,7 +223,6 @@ The object-oriented interface is available for these more complicated situations
 ^kind/vega
 (hanami-common/xform
  hanami-templates/line-chart
- :WIDTH 600 :HEIGHT 500 :X :x :Y :y
  :XSCALE {:domain [0 10]}
  :YSCALE {:domain [-1 1]}
  :DATA {})
@@ -244,7 +243,7 @@ Once we have created an axes, we can use the ax.plot function to plot some data.
  (map (fn [x] {:x x :y (dtype-func/sin (- x 0))}) x-range)
  (#(hanami-common/xform
     hanami-templates/line-chart
-    :WIDTH 600 :HEIGHT 500 :X :x :Y :y :DATA %)))
+    :DATA %)))
 
 ["Alternatively, we can use the pylab interface and let the figure and axes be created for us in the background (see Two Interfaces for the Price of One for a discussion of these two interfaces):"]
 
@@ -255,7 +254,7 @@ Once we have created an axes, we can use the ax.plot function to plot some data.
   (into (map (fn [x] {:label "cos" :x x :y (dtype-func/cos x)}) x-range))
  (#(hanami-common/xform
     hanami-templates/line-chart
-    :WIDTH 600 :HEIGHT 500 :X :x :Y :y :DATA %))
+    :DATA %))
   (#(assoc-in %
                [:encoding :strokeDash]
                {:field :label
@@ -288,8 +287,6 @@ The first adjustment you might wish to make to a plot is to control the line col
  (into (map (fn [x] {:x x :y (dtype-func/sin (- x 5)) :color "chartreus"}) x-range))
  (#(hanami-common/xform
     hanami-templates/line-chart
-    :WIDTH 600 :HEIGHT 500 :X :x :Y :y
-    :WIDTH 600 :HEIGHT 500
     :COLOR {:field :color :type "nominal" :scale nil}
     :DATA %)))
 
@@ -331,7 +328,6 @@ Similarly, the line style can be adjusted using the linestyle keyword:"]
  (into (map (fn [x] {:label 7 :x x :y (+ x 7) :stroke (get linestyle ":")}) x-range))
  (#(hanami-common/xform
     hanami-templates/line-chart
-    :WIDTH 600 :HEIGHT 500 :X :x :Y :y
     :COLOR {:field :label}
     :DATA %))
  (assoc-in [:encoding :strokeDash] {:field :stroke :scale nil}))
@@ -365,7 +361,6 @@ Matplotlib does a decent job of choosing default axes limits for your plot, but 
  (into (map (fn [x] {:x x :y (dtype-func/sin x)}) x-range))
  (#(hanami-common/xform
     hanami-templates/line-chart
-    :WIDTH 600 :HEIGHT 500 :X :x :Y :y
     :YSCALE {:domain [-1.5, 1.5]}
     :XSCALE {:domain [-1, 11]}
     :COLOR {:field :label}
@@ -385,7 +380,6 @@ Matplotlib does a decent job of choosing default axes limits for your plot, but 
  (into (map (fn [x] {:x x :y (dtype-func/sin x)}) x-range))
  (#(hanami-common/xform
     hanami-templates/line-chart
-    :WIDTH 600 :HEIGHT 500 :X :x :Y :y
     :YSCALE {:domain [1.2, -1.2]}
     :XSCALE {:domain [10, 0]}
     :COLOR {:field :label}
@@ -425,7 +419,6 @@ Titles and axis labels are the simplest such labels—there are methods that can
    (into (map (fn [x] {:x x :y (dtype-func/sin x)}) x-range))
    (#(hanami-common/xform
       hanami-templates/line-chart
-      :WIDTH 600 :HEIGHT 500 :X :x :Y :y
       :TITLE "A Sine Curve"
       :YTITLE "sin(x)"
       :DATA %)))
@@ -448,7 +441,6 @@ plt.legend();"]
  (into (map (fn [x] {:label "cos(x)" :color "blue" :x x :y (dtype-func/cos x) :stroke (:dotted linestyle)}) x-range))
  (#(hanami-common/xform
     hanami-templates/line-chart
-    :WIDTH 600 :HEIGHT 500 :X :x :Y :y
     :YSCALE {:domain [-3 3]}
     :COLOR {:field :label :scale {:range {:field :color}}}
     :DATA %))
