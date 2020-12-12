@@ -244,7 +244,7 @@ Once we have created an axes, we can use the ax.plot function to plot some data.
 
 ^kind/vega
 (->
- (map #(identity {:x % :y (dtype-func/sin %)}) (range 0 10 1/10))
+ (map (fn [x] {:label 0 :x x :y (dtype-func/sin (- x 0))}) x-range)
  (#(hanami-common/xform
     hanami-templates/line-chart
     :WIDTH 600 :HEIGHT 400
@@ -256,12 +256,9 @@ Once we have created an axes, we can use the ax.plot function to plot some data.
 
 
 ^kind/vega
-(->>
- (interleave
-  (repeat 100 [dtype-func/sin "sin"])
-  (repeat 100 [dtype-func/cos "cos"]))
- (add-x 2)
- rows->maps
+(->> []
+  (into (map (fn [x] {:label 0 :x x :y (dtype-func/sin (- x 0))}) x-range))
+  (into (map (fn [x] {:label 0 :x x :y (dtype-func/cos (- x 0))}) x-range))
  (#(hanami-common/xform
     hanami-templates/line-chart
     :WIDTH 600 :HEIGHT 500
@@ -285,15 +282,17 @@ The first adjustment you might wish to make to a plot is to control the line col
   plt.plot(x, np.sin(x - 4), color=(1.0,0.2,0.3)) # RGB tuple, values 0 to 1
   plt.plot(x, np.sin(x - 5), color='chartreuse'); # all HTML color names supported"]
 
+
+
 ^kind/vega
 (->
  []
- (into (map #(identity {:label 0 :x % :y (dtype-func/sin (- % 0))}) x-range))
- (into (map #(identity {:label 1 :x % :y (dtype-func/sin (- % 1))}) x-range))
- (into (map #(identity {:label 2 :x % :y (dtype-func/sin (- % 2))}) x-range))
- (into (map #(identity {:label 3 :x % :y (dtype-func/sin (- % 3))}) x-range))
- (into (map #(identity {:label 4 :x % :y (dtype-func/sin (- % 4))}) x-range))
- (into (map #(identity {:label 5 :x % :y (dtype-func/sin (- % 5))}) x-range))
+ (into (map (fn [x] {:label 0 :x x :y (dtype-func/sin (- x 0))} :color "blue") x-range))
+ (into (map (fn [x] {:label 1 :x x :y (dtype-func/sin (- x 1))} :color "g") x-range))
+ (into (map (fn [x] {:label 2 :x x :y (dtype-func/sin (- x 2))} :color "0.75") x-range))
+ (into (map (fn [x] {:label 3 :x x :y (dtype-func/sin (- x 3))} :color "#FFDD44") x-range))
+ (into (map (fn [x] {:label 4 :x x :y (dtype-func/sin (- x 4))} :color "(1.0, 0.2, 0.3") x-range))
+ (into (map (fn [x] {:label 5 :x x :y (dtype-func/sin (- x 5))} :color "chartreuse") x-range))
  (#(hanami-common/xform
     hanami-templates/line-chart
     :WIDTH 600 :HEIGHT 500
