@@ -1,7 +1,6 @@
 (ns scicloj.04-visualization-with-hanami
   (:require [notespace.api :as notespace]
-            [notespace.kinds :as kind]
-            [tech.v3.datatype.functional :as dtype]))
+            [notespace.kinds :as kind]))
 
 ;; Notespace
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -38,7 +37,8 @@
 
 (require '[aerial.hanami.common :as hanami-common]
          '[aerial.hanami.templates :as hanami-templates]
-         '[tech.v3.datatype.functional :as dtype-func])
+         '[tech.v3.datatype.functional :as dtype-func]
+         '[fastmath.core :as fastmath])
 
 
 
@@ -84,7 +84,7 @@ After running this command (it needs to be done only once per kernel/session), a
 
 TO-DO need to clean all this:"]
 
-(def x-range (range 0 10 1/10))
+(def x-range (fastmath/slice-range 0 10 100))
 
 (def my-figure
   (->
@@ -93,10 +93,7 @@ TO-DO need to clean all this:"]
    (into (map #(identity {:x % :y (dtype-func/cos %) :label "cos"}) x-range))
    (#(hanami-common/xform
       hanami-templates/line-chart
-      :WIDTH 600 :HEIGHT 500
-      :ENCODINGS {:X :x
-                  :Y :y}
-      :DATA %))
+      :WIDTH 600 :HEIGHT 500 :X :x :Y :y :DATA %))
    (#(assoc-in %
                [:encoding :strokeDash]
                {:field :label
@@ -225,11 +222,11 @@ The object-oriented interface is available for these more complicated situations
 
 ^kind/vega
 (hanami-common/xform
-  hanami-templates/line-chart
-  :WIDTH 600 :HEIGHT 500
-  :ENCODINGS {:X :x
-              :Y :y}
-  :DATA {})
+ hanami-templates/line-chart
+ :WIDTH 600 :HEIGHT 500 :X :x :Y :y
+ :XSCALE {:domain [0 10]}
+ :YSCALE {:domain [-1 1]}
+ :DATA {})
 
 ["In Matplotlib, the figure (an instance of the class plt.Figure) can be thought of as a single container that contains all the objects representing axes, graphics, text, and labels. The axes (an instance of the class plt.Axes) is what we see above: a bounding box with ticks and labels, which will eventually contain the plot elements that make up our visualization. Throughout this book, we'll commonly use the variable name fig to refer to a figure instance, and ax to refer to an axes instance or group of axes instances.
 
@@ -243,14 +240,11 @@ Once we have created an axes, we can use the ax.plot function to plot some data.
   ax.plot(x, np.sin(x));"]
 
 ^kind/vega
-(->
- (map (fn [x] {:label 0 :x x :y (dtype-func/sin (- x 0))}) x-range)
+(-> []
+ (map (fn [x] {:x x :y (dtype-func/sin (- x 0))}) x-range)
  (#(hanami-common/xform
     hanami-templates/line-chart
-    :WIDTH 600 :HEIGHT 400
-    :ENCODINGS {:X :x
-                :Y :y}
-    :DATA %)))
+    :WIDTH 600 :HEIGHT 500 :X :x :Y :y :DATA %)))
 
 ["Alternatively, we can use the pylab interface and let the figure and axes be created for us in the background (see Two Interfaces for the Price of One for a discussion of these two interfaces):"]
 
@@ -261,11 +255,11 @@ Once we have created an axes, we can use the ax.plot function to plot some data.
   (into (map (fn [x] {:label "cos" :x x :y (dtype-func/cos x)}) x-range))
  (#(hanami-common/xform
     hanami-templates/line-chart
-    :WIDTH 600 :HEIGHT 500
-    :ENCODINGS {:X :x
-                :Y :y}
-    :COLOR {:field :label}
-    :DATA %)))
+    :WIDTH 600 :HEIGHT 500 :X :x :Y :y :DATA %))
+  (#(assoc-in %
+               [:encoding :strokeDash]
+               {:field :label
+                :type "nominal"})))
 
 ["That's all there is to plotting simple functions in Matplotlib! We'll now dive into some more details about how to control the appearance of the axes and lines."]
 
@@ -294,9 +288,190 @@ The first adjustment you might wish to make to a plot is to control the line col
  (into (map (fn [x] {:x x :y (dtype-func/sin (- x 5)) :color "chartreus"}) x-range))
  (#(hanami-common/xform
     hanami-templates/line-chart
+    :WIDTH 600 :HEIGHT 500 :X :x :Y :y
     :WIDTH 600 :HEIGHT 500
-    :ENCODINGS {:X :x
-                :Y :y}
     :COLOR {:field :color :type "nominal" :scale nil}
     :DATA %)))
 
+["If no color is specified, Matplotlib will automatically cycle through a set of default colors for multiple lines.
+
+Similarly, the line style can be adjusted using the linestyle keyword:"]
+
+^kind/void
+["plt.plot(x, x + 0, linestyle='solid')
+  plt.plot(x, x + 1, linestyle='dashed')
+  plt.plot(x, x + 2, linestyle='dashdot')
+  plt.plot(x, x + 3, linestyle='dotted');
+  
+  # For short, you can use the following codes:
+  plt.plot(x, x + 4, linestyle='-')  # solid
+  plt.plot(x, x + 5, linestyle='--') # dashed
+  plt.plot(x, x + 6, linestyle='-.') # dashdot
+  plt.plot(x, x + 7, linestyle=':');  # dotted"]
+
+(def linestyle {:solid [1 0]
+                "-" [1 0]
+                :dashed [10 10]
+                "--" [10 10]
+                :dashdot [2 5 5 5]
+                "-." [2 5 5 5]
+                :dotted [2 2]
+                ":" [2 2]})
+
+^kind/vega
+(->
+ []
+ (into (map (fn [x] {:label 0 :x x :y (+ x 0) :stroke (:solid linestyle)}) x-range))
+ (into (map (fn [x] {:label 1 :x x :y (+ x 1) :stroke (:dashed linestyle)}) x-range))
+ (into (map (fn [x] {:label 2 :x x :y (+ x 2) :stroke (:dasheddot linestyle)}) x-range))
+ (into (map (fn [x] {:label 3 :x x :y (+ x 3) :stroke (:dotted linestyle)}) x-range))
+ (into (map (fn [x] {:label 4 :x x :y (+ x 4) :stroke (get linestyle "-")}) x-range))
+ (into (map (fn [x] {:label 5 :x x :y (+ x 5) :stroke (get linestyle "--")}) x-range))
+ (into (map (fn [x] {:label 6 :x x :y (+ x 6) :stroke (get linestyle "-.")}) x-range))
+ (into (map (fn [x] {:label 7 :x x :y (+ x 7) :stroke (get linestyle ":")}) x-range))
+ (#(hanami-common/xform
+    hanami-templates/line-chart
+    :WIDTH 600 :HEIGHT 500 :X :x :Y :y
+    :COLOR {:field :label}
+    :DATA %))
+ (assoc-in [:encoding :strokeDash] {:field :stroke :scale nil}))
+
+["If you would like to be extremely terse, these linestyle and color codes can be combined into a single non-keyword argument to the plt.plot() function"]
+
+^kind/void
+["plt.plot(x, x + 0, '-g')  # solid green
+  plt.plot(x, x + 1, '--c') # dashed cyan
+  plt.plot(x, x + 2, '-.k') # dashdot black
+  plt.plot(x, x + 3, ':r');  # dotted red"]
+
+
+["These single-character color codes reflect the standard abbreviations in the RGB (Red/Green/Blue) and CMYK (Cyan/Magenta/Yellow/blacK) color systems, commonly used for digital color graphics.
+
+There are many other keyword arguments that can be used to fine-tune the appearance of the plot; for more details, I'd suggest viewing the docstring of the plt.plot() function using IPython's help tools (See Help and Documentation in IPython)."]
+
+["## Adjusting the Plot: Axes Limits
+
+Matplotlib does a decent job of choosing default axes limits for your plot, but sometimes it's nice to have finer control. The most basic way to adjust axis limits is to use the plt.xlim() and plt.ylim() methods:"]
+
+^kind/void
+["plt.plot(x, np.sin(x))
+
+ plt.xlim(-1, 11)
+ plt.ylim(-1.5, 1.5);"]
+
+^kind/vega
+(->
+ []
+ (into (map (fn [x] {:x x :y (dtype-func/sin x)}) x-range))
+ (#(hanami-common/xform
+    hanami-templates/line-chart
+    :WIDTH 600 :HEIGHT 500 :X :x :Y :y
+    :YSCALE {:domain [-1.5, 1.5]}
+    :XSCALE {:domain [-1, 11]}
+    :COLOR {:field :label}
+    :DATA %)))
+
+["If for some reason you'd like either axis to be displayed in reverse, you can simply reverse the order of the arguments:"]
+
+^kind/void
+["plt.plot(x, np.sin(x))
+
+  plt.xlim(10, 0)
+  plt.ylim(1.2, -1.2);"]
+
+^kind/vega
+(->
+ []
+ (into (map (fn [x] {:x x :y (dtype-func/sin x)}) x-range))
+ (#(hanami-common/xform
+    hanami-templates/line-chart
+    :WIDTH 600 :HEIGHT 500 :X :x :Y :y
+    :YSCALE {:domain [1.2, -1.2]}
+    :XSCALE {:domain [10, 0]}
+    :COLOR {:field :label}
+    :DATA %)))
+
+["A useful related method is plt.axis() (note here the potential confusion between axes with an e, and axis with an i). The plt.axis() method allows you to set the x and y limits with a single call, by passing a list which specifies [xmin, xmax, ymin, ymax]:"]
+
+
+^kind/void
+["plt.plot(x, np.sin(x))
+plt.axis([-1, 11, -1.5, 1.5]);"]
+
+["The plt.axis() method goes even beyond this, allowing you to do things like automatically tighten the bounds around the current plot:"]
+
+^kind/void
+["plt.plot(x, np.sin(x))
+ plt.axis('tight');"]
+
+["It allows even higher-level specifications, such as ensuring an equal aspect ratio so that on your screen, one unit in x is equal to one unit in y:"]
+
+^kind/void
+["plt.plot(x, np.sin(x))
+ plt.axis('equal');"]
+
+["For more information on axis limits and the other capabilities of the plt.axis method, refer to the plt.axis docstring."]
+
+
+["## Labeling Plots
+
+As the last piece of this section, we'll briefly look at the labeling of plots: titles, axis labels, and simple legends.
+
+Titles and axis labels are the simplest such labels—there are methods that can be used to quickly set them:"]
+
+^kind/vega
+(->
+   []
+   (into (map (fn [x] {:x x :y (dtype-func/sin x)}) x-range))
+   (#(hanami-common/xform
+      hanami-templates/line-chart
+      :WIDTH 600 :HEIGHT 500 :X :x :Y :y
+      :TITLE "A Sine Curve"
+      :YTITLE "sin(x)"
+      :DATA %)))
+
+["The position, size, and style of these labels can be adjusted using optional arguments to the function. For more information, see the Matplotlib documentation and the docstrings of each of these functions.
+
+When multiple lines are being shown within a single axes, it can be useful to create a plot legend that labels each line type. Again, Matplotlib has a built-in way of quickly creating such a legend. It is done via the (you guessed it) plt.legend() method. Though there are several valid ways of using this, I find it easiest to specify the label of each line using the label keyword of the plot function:"]
+
+^kind/void
+["plt.plot(x, np.sin(x), '-g', label='sin(x)')
+plt.plot(x, np.cos(x), ':b', label='cos(x)')
+plt.axis('equal')
+
+plt.legend();"]
+
+^kind/vega
+(->
+ []
+ (into (map (fn [x] {:label "sin(x)" :color "green" :x x :y (dtype-func/sin x) :stroke (:solid linestyle)}) x-range))
+ (into (map (fn [x] {:label "cos(x)" :color "blue" :x x :y (dtype-func/cos x) :stroke (:dotted linestyle)}) x-range))
+ (#(hanami-common/xform
+    hanami-templates/line-chart
+    :WIDTH 600 :HEIGHT 500 :X :x :Y :y
+    :YSCALE {:domain [-3 3]}
+    :COLOR {:field :label :scale {:range {:field :color}}}
+    :DATA %))
+ (assoc-in [:encoding :strokeDash] {:field :stroke :scale nil}))
+
+
+["As you can see, the plt.legend() function keeps track of the line style and color, and matches these with the correct label. More information on specifying and formatting plot legends can be found in the plt.legend docstring; additionally, we will cover some more advanced legend options in Customizing Plot Legends."]
+
+["## Aside: Matplotlib Gotchas
+
+While most plt functions translate directly to ax methods (such as plt.plot() → ax.plot(), plt.legend() → ax.legend(), etc.), this is not the case for all commands. In particular, functions to set limits, labels, and titles are slightly modified. For transitioning between MATLAB-style functions and object-oriented methods, make the following changes:
+
+    plt.xlabel() → ax.set_xlabel()
+    plt.ylabel() → ax.set_ylabel()
+    plt.xlim() → ax.set_xlim()
+    plt.ylim() → ax.set_ylim()
+    plt.title() → ax.set_title()
+
+In the object-oriented interface to plotting, rather than calling these functions individually, it is often more convenient to use the ax.set() method to set all these properties at once:"]
+
+^kind/void
+["ax = plt.axes()
+  ax.plot(x, np.sin(x))
+  ax.set(xlim=(0, 10), ylim=(-2, 2),
+         xlabel='x', ylabel='sin(x)',
+         title='A Simple Plot');"]
