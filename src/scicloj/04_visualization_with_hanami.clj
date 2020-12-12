@@ -36,10 +36,7 @@
 
 ["### Importing Hanami"]
 
-(require '[clojure.java.io :as io]
-         '[tablecloth.api :as tablecloth]
-         '[scicloj.helpers :as helpers]
-         '[aerial.hanami.common :as hanami-common]
+(require '[aerial.hanami.common :as hanami-common]
          '[aerial.hanami.templates :as hanami-templates]
          '[tech.v3.datatype.functional :as dtype-func])
 
@@ -87,34 +84,23 @@ After running this command (it needs to be done only once per kernel/session), a
 
 TO-DO need to clean all this:"]
 
-(defn maps
-  [row]
-  (map (fn [[f label x]]
-         {:x x :label label :y (f x)}) row))
-
-(defn add-x
-  [coll]
-  (let [x (range 0 10 1/10)]
-   (map #(conj %2 %1)
-        (mapcat #(repeat 2 %) x) coll)))
+(def x-range (range 0 10 1/10))
 
 (def my-figure
- (->>
-  (interleave
-   (repeat 100 [dtype-func/sin "sin"])
-   (repeat 100 [dtype-func/cos "cos"]))
-  add-x
-  maps
-  (#(hanami-common/xform
-     hanami-templates/line-chart
-     :WIDTH 600 :HEIGHT 500
-     :ENCODINGS {:X :x
-                 :Y :y}
-     :DATA %))
-  (#(assoc-in %
-              [:encoding :strokeDash]
-              {:field :label
-               :type "nominal"}))))
+  (->
+   []
+   (into (map #(identity {:x % :y (dtype-func/sin %) :label "sin"}) x-range))
+   (into (map #(identity {:x % :y (dtype-func/cos %) :label "cos"}) x-range))
+   (#(hanami-common/xform
+      hanami-templates/line-chart
+      :WIDTH 600 :HEIGHT 500
+      :ENCODINGS {:X :x
+                  :Y :y}
+      :DATA %))
+   (#(assoc-in %
+               [:encoding :strokeDash]
+               {:field :label
+                :type "nominal"}))))
 
 ^kind/vega
 my-figure
@@ -267,3 +253,52 @@ Once we have created an axes, we can use the ax.plot function to plot some data.
     :DATA %)))
 
 ["Alternatively, we can use the pylab interface and let the figure and axes be created for us in the background (see Two Interfaces for the Price of One for a discussion of these two interfaces):"]
+
+
+^kind/vega
+(->>
+ (interleave
+  (repeat 100 [dtype-func/sin "sin"])
+  (repeat 100 [dtype-func/cos "cos"]))
+ (add-x 2)
+ rows->maps
+ (#(hanami-common/xform
+    hanami-templates/line-chart
+    :WIDTH 600 :HEIGHT 500
+    :ENCODINGS {:X :x
+                :Y :y}
+    :COLOR {:field :label}
+    :DATA %)))
+
+["That's all there is to plotting simple functions in Matplotlib! We'll now dive into some more details about how to control the appearance of the axes and lines."]
+
+["Adjusting the Plot: Line Colors and Styles
+
+The first adjustment you might wish to make to a plot is to control the line colors and styles. The plt.plot() function takes additional arguments that can be used to specify these. To adjust the color, you can use the color keyword, which accepts a string argument representing virtually any imaginable color. The color can be specified in a variety of ways:"]
+
+
+^kind/void
+["plt.plot(x, np.sin(x - 0), color='blue')        # specify color by name
+  plt.plot(x, np.sin(x - 1), color='g')           # short color code (rgbcmyk)
+  plt.plot(x, np.sin(x - 2), color='0.75')        # Grayscale between 0 and 1
+  plt.plot(x, np.sin(x - 3), color='#FFDD44')     # Hex code (RRGGBB from 00 to FF)
+  plt.plot(x, np.sin(x - 4), color=(1.0,0.2,0.3)) # RGB tuple, values 0 to 1
+  plt.plot(x, np.sin(x - 5), color='chartreuse'); # all HTML color names supported"]
+
+^kind/vega
+(->
+ []
+ (into (map #(identity {:label 0 :x % :y (dtype-func/sin (- % 0))}) x-range))
+ (into (map #(identity {:label 1 :x % :y (dtype-func/sin (- % 1))}) x-range))
+ (into (map #(identity {:label 2 :x % :y (dtype-func/sin (- % 2))}) x-range))
+ (into (map #(identity {:label 3 :x % :y (dtype-func/sin (- % 3))}) x-range))
+ (into (map #(identity {:label 4 :x % :y (dtype-func/sin (- % 4))}) x-range))
+ (into (map #(identity {:label 5 :x % :y (dtype-func/sin (- % 5))}) x-range))
+ (#(hanami-common/xform
+    hanami-templates/line-chart
+    :WIDTH 600 :HEIGHT 500
+    :ENCODINGS {:X :x
+                :Y :y}
+    :COLOR {:field :label}
+    :DATA %)))
+
