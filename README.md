@@ -1,4 +1,5 @@
 # SciCloj Clojure Data Science Handbook
+
 A reference style resource to help build understanding in how to use Clojure for data science projects.
 
 Inspired by the [Python Data Science Handbook](https://jakevdp.github.io/PythonDataScienceHandbook/), the project creates a series of journal notebooks based on the chapters in this book.
@@ -8,7 +9,7 @@ Notebooks are created with the [scicloj/notespace library](https://github.com/sc
 
 ## Getting started
 
-Clone the project from https://github.com/scicloj/data-science-handbook
+Clone the project from https://github.com/scicloj/scicloj-data-science-handbook
 
 ## Usage
 Open the project in a [Clojure aware editor](https://practicalli.github.io/clojure/clojure-editors/) and start a REPL (either on the command line or from the editor itself).
