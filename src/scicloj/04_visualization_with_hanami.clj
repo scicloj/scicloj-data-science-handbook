@@ -91,7 +91,7 @@ TO-DO need to clean all this:"]
 (def x-range (fastmath/slice-range 0 10 100))
 
 (def sin-cos
-   (->
+  (->
    []
    (into (map #(identity {:x % :y (dtype-func/sin %) :label "sin"}) x-range))
    (into (map #(identity {:x % :y (dtype-func/cos %) :label "cos"}) x-range))))
@@ -118,13 +118,13 @@ One nice feature of Matplotlib is the ability to save figures in a wide variety 
 
 (defn save-plot! [m & [filename]]
   (let [svg-render (if (= (:MODE m) "vega")
-                 darkstar/vega-spec->svg
-                 darkstar/vega-lite-spec->svg)]
-   (->>
-    m
-    json/write-str
-    svg-render
-    (spit (or filename "plot.svg")))))
+                     darkstar/vega-spec->svg
+                     darkstar/vega-lite-spec->svg)]
+    (->>
+     m
+     json/write-str
+     svg-render
+     (spit (or filename "plot.svg")))))
 
 
 (save-plot! my-figure "my_figure.svg")
@@ -228,9 +228,9 @@ The object-oriented interface is available for these more complicated situations
 
 ^kind/vega
 (hanami-plot {}
- hanami-templates/line-chart
- :XSCALE {:domain [0 10]}
- :YSCALE {:domain [-1 1]})
+             hanami-templates/line-chart
+             :XSCALE {:domain [0 10]}
+             :YSCALE {:domain [-1 1]})
 
 ["In Matplotlib, the figure (an instance of the class plt.Figure) can be thought of as a single container that contains all the objects representing axes, graphics, text, and labels. The axes (an instance of the class plt.Axes) is what we see above: a bounding box with ticks and labels, which will eventually contain the plot elements that make up our visualization. Throughout this book, we'll commonly use the variable name fig to refer to a figure instance, and ax to refer to an axes instance or group of axes instances.
 
@@ -277,19 +277,19 @@ The first adjustment you might wish to make to a plot is to control the line col
 
 (def with-manual-colors
   (->
- []
- (into (map (fn [x] {:x x :y (dtype-func/sin (- x 0)) :color "blue"}) x-range))
- (into (map (fn [x] {:x x :y (dtype-func/sin (- x 1)) :color "green"}) x-range))
- (into (map (fn [x] {:x x :y (dtype-func/sin (- x 2)) :color "hsl(0, 0%, 75%)"}) x-range))
- (into (map (fn [x] {:x x :y (dtype-func/sin (- x 3)) :color "#FFDD44"}) x-range))
- (into (map (fn [x] {:x x :y (dtype-func/sin (- x 4)) :color "rgb(256, 51, 77)"}) x-range))
- (into (map (fn [x] {:x x :y (dtype-func/sin (- x 5)) :color "chartreus"}) x-range))))
+   []
+   (into (map (fn [x] {:x x :y (dtype-func/sin (- x 0)) :color "blue"}) x-range))
+   (into (map (fn [x] {:x x :y (dtype-func/sin (- x 1)) :color "green"}) x-range))
+   (into (map (fn [x] {:x x :y (dtype-func/sin (- x 2)) :color "hsl(0, 0%, 75%)"}) x-range))
+   (into (map (fn [x] {:x x :y (dtype-func/sin (- x 3)) :color "#FFDD44"}) x-range))
+   (into (map (fn [x] {:x x :y (dtype-func/sin (- x 4)) :color "rgb(256, 51, 77)"}) x-range))
+   (into (map (fn [x] {:x x :y (dtype-func/sin (- x 5)) :color "chartreus"}) x-range))))
 
 ^kind/vega
 (->
  with-manual-colors
  (hanami-plot  hanami-templates/line-chart
-   :COLOR {:field :color :type "nominal" :scale nil}))
+               :COLOR {:field :color :type "nominal" :scale nil}))
 
 ["If no color is specified, Matplotlib will automatically cycle through a set of default colors for multiple lines.
 
@@ -418,13 +418,13 @@ Titles and axis labels are the simplest such labels—there are methods that can
 
 ^kind/vega
 (->
-   
-   (map (fn [x] {:x x :y (dtype-func/sin x)}) x-range)
-   (#(hanami-common/xform
-      hanami-templates/line-chart
-      :TITLE "A Sine Curve"
-      :YTITLE "sin(x)"
-      :DATA %)))
+ 
+ (map (fn [x] {:x x :y (dtype-func/sin x)}) x-range)
+ (#(hanami-common/xform
+    hanami-templates/line-chart
+    :TITLE "A Sine Curve"
+    :YTITLE "sin(x)"
+    :DATA %)))
 
 ["The position, size, and style of these labels can be adjusted using optional arguments to the function. For more information, see the Matplotlib documentation and the docstrings of each of these functions.
 
@@ -443,9 +443,9 @@ plt.legend();"]
  (into (map (fn [x] {:label "sin(x)" :color "green" :x x :y (dtype-func/sin x) :stroke (:solid linestyle)}) x-range))
  (into (map (fn [x] {:label "cos(x)" :color "blue" :x x :y (dtype-func/cos x) :stroke (:dotted linestyle)}) x-range))
  (hanami-plot
-   hanami-templates/line-chart
-   :YSCALE {:domain [-3 3]}
-   :COLOR {:field :label :scale {:range {:field :color}}})
+  hanami-templates/line-chart
+  :YSCALE {:domain [-3 3]}
+  :COLOR {:field :label :scale {:range {:field :color}}})
  (assoc-in [:encoding :strokeDash] {:field :stroke :scale nil}))
 
 
