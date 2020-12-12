@@ -40,11 +40,11 @@ data/iris
 ["Visualizing:"]
 
 (require '[clojure.java.io :as io]
+         '[tech.v3.dataset :as dataset]
          '[tablecloth.api :as tablecloth]
          '[tech.viz.vega :as viz]
-         '[aerial.hanami.common :as hc]
-         '[aerial.hanami.templates :as ht]
-         '[aerial.hanami.core :as hmi]
+         '[aerial.hanami.common :as hanami-common]
+         '[aerial.hanami.templates :as hanami-templates]
          '[scicloj.data :as data]
          '[scicloj.helpers :as helpers]
          '[scicloj.helpers.vega :as helpers.vega])
@@ -55,9 +55,9 @@ data/iris
     (viz/scatterplot :sepal-width :sepal-length))
 
 ^kind/vega
-(hc/xform
+(hanami-common/xform
  helpers.vega/interactive-scatterplot-matrix
- :VALDATA (-> data/iris
+ :DATA (-> data/iris
               (tablecloth/rows :as-maps))
  :ROWS [:sepal-length :sepal-width :petal-length :petal-width],
  :COLUMNS [:sepal-length :sepal-width :petal-length :petal-width]
@@ -65,10 +65,27 @@ data/iris
 
 ["TODO: Add histograms at the diagonal, as typical SPLOMs (scatter plot matrices) do. For Vega-Lite, it is an open issue: https://github.com/vega/vega-lite/issues/3294."]
 
+["Let us draw the histograms separately:"]
+
+^kind/hiccup
+(->> [:sepal-length :sepal-width :petal-length :petal-width]
+     (map (fn [column-name]
+            [:p/vega
+             (hanami-common/xform
+              hanami-templates/bar-chart
+              :DATA (-> data/iris
+                        (tablecloth/rows :as-maps))
+              :X column-name
+              :Y []
+              :YAGG "count"
+              :XBIN {:maxbins 20}
+              :COLOR {:field :species})]))
+     (into [:div]))
+
 ["## Linear regression"]
 
 (require '[tech.v3.datatype :as dtype]
-         '[tech.v3.datatype.functional :as dfn]
+         '[tech.v3.datatype.functional :as dtype-fn]
          '[fastmath.random :as random])
 
 ["Random data:"]
@@ -89,15 +106,14 @@ plt.scatter(x, y);
   (let [n 50
         rng (random/rng :isaac 42)
         x (-> (random/->seq rng n)
-              (dfn/* 10))
+              (dtype-fn/* 10))
         y (-> x
-              (dfn/* 2)
-              (dfn/- 1)
-              (dfn/+ (random/->seq rng n)))]
+              (dtype-fn/* 2)
+              (dtype-fn/- 1)
+              (dtype-fn/+ (random/->seq rng n)))]
     (tablecloth/dataset
      {:x (vec x)
       :y (vec y)})))
-
 
 ^kind/dataset
 linear-data
@@ -109,7 +125,8 @@ linear-data
 
 ["Linear modeling of the data:"]
 
-(require '[tech.v3.libs.smile.regression :as regression]
+(require '[tech.v3.libs.smile.regression]
+         '[tech.v3.libs.smile.classification]
          '[tech.v3.dataset.modelling :as modelling]
          '[tech.v3.ml :as ml])
 
@@ -132,6 +149,20 @@ linear-data
 predictions-for-dummy-data
 
 ^kind/vega
-(hc/xform ht/line-chart
-          :VALDATA (-> predictions-for-dummy-data
-                       (tablecloth/rows :as-maps)))
+(hanami-common/xform
+ hanami-templates/layer-chart
+ :LAYER [(hanami-common/xform
+          hanami-templates/point-chart
+          :DATA (-> linear-data
+                    (tablecloth/rows :as-maps)))
+         (hanami-common/xform
+          hanami-templates/line-chart
+          :DATA (-> predictions-for-dummy-data
+                    (tablecloth/rows :as-maps)))])
+
+
+;; ["## Supervised learning example: Iris classification"]
+
+;; ["TODO: Support Naive Bayes classifiers, as the Python tutorial does."]
+
+

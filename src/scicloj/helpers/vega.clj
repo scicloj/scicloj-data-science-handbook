@@ -1,16 +1,15 @@
 (ns scicloj.helpers.vega
   (:require [notespace.kinds :as kind]))
 
-(require '[aerial.hanami.common :as hc]
-         '[aerial.hanami.templates :as ht]
-         '[aerial.hanami.core :as hmi])
+(require '[aerial.hanami.common :as hanami-common]
+         '[aerial.hanami.templates :as hanami-templates])
 
 ["Similar to pairplots (e.g., [those of Seaborn](https://seaborn.pydata.org/generated/seaborn.pairplot.html)), we sometimes want to have a matrix of scatterplots of all pairs of numerical variables in a dataset.
 The following is based on [an example of the Vega-Lite tutorials](https://vega.github.io/vega-lite/examples/interactive_splom.html), generalized using Hanami."]
 
 (def interactive-scatterplot-matrix
   (merge
-   ht/view-base
+   hanami-templates/view-base
    {:repeat
     {:row    :ROWS
      :column :COLUMNS},
@@ -44,10 +43,10 @@ The following is based on [an example of the Vega-Lite tutorials](https://vega.g
          '[tablecloth.api :as tablecloth])
 
 ^kind/vega
-(hc/xform
+(hanami-common/xform
  interactive-scatterplot-matrix
- :VALDATA (-> data/iris
-              (tablecloth/rows :as-maps))
+ :DATA (-> data/iris
+           (tablecloth/rows :as-maps))
  :ROWS [:sepal-length :sepal-width :petal-length :petal-width],
  :COLUMNS [:sepal-length :sepal-width :petal-length :petal-width]
  :COLOR-FIELD :species)
