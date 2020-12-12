@@ -1,7 +1,7 @@
 (ns scicloj.04-visualization-with-hanami
   (:require [notespace.api :as notespace]
             [notespace.kinds :as kind]
-            [clojure.java.io :as io]))
+            [tech.v3.datatype.functional :as dtype]))
 
 ;; Notespace
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -40,7 +40,8 @@
          '[tablecloth.api :as tablecloth]
          '[scicloj.helpers :as helpers]
          '[aerial.hanami.common :as hanami-common]
-         '[aerial.hanami.templates :as hanami-templates])
+         '[aerial.hanami.templates :as hanami-templates]
+         '[tech.v3.datatype.functional :as dtype-func])
 
 
 
@@ -82,40 +83,187 @@ Plotting interactively within an IPython notebook can be done with the %matplotl
     %matplotlib notebook will lead to interactive plots embedded within the notebook
     %matplotlib inline will lead to static images of your plot embedded in the notebook
 
-After running this command (it needs to be done only once per kernel/session), any cell within the notebook that creates a plot will embed a PNG image of the resulting graphic:"
- ]
+After running this command (it needs to be done only once per kernel/session), any cell within the notebook that creates a plot will embed a PNG image of the resulting graphic:
 
-;; TO-DO need to clean all this:
-(def sin #(Math/sin %))
-(def cos #(Math/cos %))
+TO-DO need to clean all this:"]
 
-(defn row [x f l]
-  {:x x
-   :y (f x)
-   :label l})
+(defn maps
+  [row]
+  (map (fn [[f label x]]
+         {:x x :label label :y (f x)}) row))
 
-(defn plot-data [coll]
-  (into (map (fn [n] (row n sin "-")) coll)
-        (map (fn [n] (row n cos "--")) coll)))
+(defn add-x
+  [coll]
+  (let [x (range 0 10 1/10)]
+   (map #(conj %2 %1)
+        (mapcat #(repeat 2 %) x) coll)))
+
+(def my-figure
+ (->>
+  (interleave
+   (repeat 100 [dtype-func/sin "sin"])
+   (repeat 100 [dtype-func/cos "cos"]))
+  add-x
+  maps
+  (#(hanami-common/xform
+     hanami-templates/line-chart
+     :WIDTH 600 :HEIGHT 500
+     :ENCODINGS {:X :x
+                 :Y :y}
+     :DATA %))
+  (#(assoc-in %
+              [:encoding :strokeDash]
+              {:field :label
+               :type "nominal"}))))
+
+^kind/vega
+my-figure
+
+["### Saving Figures to File
+
+One nice feature of Matplotlib is the ability to save figures in a wide variety of formats. Saving a figure can be done using the savefig() command. For example, to save the previous figure as a PNG file, you can run this:"]
+
+(require '[applied-science.darkstar :as darkstar]
+         '[clojure.data.json :as json])
+
+
+(defn save-plot! [m & [filename]]
+  (let [svg-render (if (= (:MODE m) "vega")
+                 darkstar/vega-spec->svg
+                 darkstar/vega-lite-spec->svg)]
+   (->>
+    m
+    json/write-str
+    svg-render
+    (spit (or filename "plot.svg")))))
+
+
+(save-plot! my-figure "my_figure.svg")
+
+["TO-DO render png"]
+
+["We now have a file called my_figure.png in the current working directory:"]
+
+^kind/void
+["!ls -lh my_figure.png"] 
+
+
+["To confirm that it contains what we think it contains, let's use the IPython Image object to display the contents of this file:"]
+
+^kind/void
+["from IPython.display import Image
+  Image('my_figure.png')"] 
+
+["In savefig(), the file format is inferred from the extension of the given filename. Depending on what backends you have installed, many different file formats are available. The list of supported file types can be found for your system by using the following method of the figure canvas object:"]
+
+^kind/hiccup
+[:pre "fig.canvas.get_supported_filetypes()"] 
+
+^kind/void
+["{'eps': 'Encapsulated Postscript',
+ 'jpeg': 'Joint Photographic Experts Group',
+ 'jpg': 'Joint Photographic Experts Group',
+ 'pdf': 'Portable Document Format',
+ 'pgf': 'PGF code for LaTeX',
+ 'png': 'Portable Network Graphics',
+ 'ps': 'Postscript',
+ 'raw': 'Raw RGBA bitmap',
+ 'rgba': 'Raw RGBA bitmap',
+ 'svg': 'Scalable Vector Graphics',
+ 'svgz': 'Scalable Vector Graphics',
+ 'tif': 'Tagged Image File Format',
+ 'tiff': 'Tagged Image File Format'}"]
+
+["Note that when saving your figure, it's not necessary to use plt.show() or related commands discussed earlier."]
+
+["## Two Interfaces for the Price of One¶
+
+A potentially confusing feature of Matplotlib is its dual interfaces: a convenient MATLAB-style state-based interface, and a more powerful object-oriented interface. We'll quickly highlight the differences between the two here.
+
+### MATLAB-style interface
+
+Matplotlib was originally written as a Python alternative for MATLAB users, and much of its syntax reflects that fact. The MATLAB-style tools are contained in the pyplot (plt) interface. For example, the following code will probably look quite familiar to MATLAB users:"]
+
+^kind/void
+["plt.figure()  # create a plot figure
+
+  # create the first of two panels and set current axis
+  plt.subplot(2, 1, 1) # (rows, columns, panel number)
+  plt.plot(x, np.sin(x))
+
+  # create the second panel and set current axis
+  plt.subplot(2, 1, 2)
+  plt.plot(x, np.cos(x));"]
+
 
 ^kind/vega
 (->
- (range 1 10 1/10)
- plot-data
+ my-figure
+ (assoc :height 150)
+ (assoc-in [:encoding :row] {:field :label
+                             :type "nominal"}))
+
+["### Object-oriented interface
+
+The object-oriented interface is available for these more complicated situations, and for when you want more control over your figure. Rather than depending on some notion of an \"active\" figure or axes, in the object-oriented interface the plotting functions are methods of explicit Figure and Axes objects. To re-create the previous plot using this style of plotting, you might do the following:"]
+
+^kind/void
+["# First create a grid of plots
+  # ax will be an array of two Axes objects
+  fig, ax = plt.subplots(2)
+
+  # Call plot() method on the appropriate object
+  ax[0].plot(x, np.sin(x))
+  ax[1].plot(x, np.cos(x));"]
+
+
+["For more simple plots, the choice of which style to use is largely a matter of preference, but the object-oriented approach can become a necessity as plots become more complicated. Throughout this chapter, we will switch between the MATLAB-style and object-oriented interfaces, depending on what is most convenient. In most cases, the difference is as small as switching plt.plot() to ax.plot(), but there are a few gotchas that we will highlight as they come up in the following sections."]
+
+
+["# Simple Line Plots"]
+
+["Perhaps the simplest of all plots is the visualization of a single function y=f(x). Here we will take a first look at creating a simple plot of this type. As with all the following sections, we'll start by setting up the notebook for plotting and importing the packages we will use:"]
+
+^kind/void
+["%matplotlib inline
+  import matplotlib.pyplot as plt
+  plt.style.use('seaborn-whitegrid')
+  import numpy as np"]
+
+
+["For all Matplotlib plots, we start by creating a figure and an axes. In their simplest form, a figure and axes can be created as follows:"]
+
+^kind/void
+["fig = plt.figure()
+  ax = plt.axes()"]
+
+^kind/vega
+(hanami-common/xform
+  hanami-templates/line-chart
+  :WIDTH 600 :HEIGHT 500
+  :ENCODINGS {:X :x
+              :Y :y}
+  :DATA {})
+
+["In Matplotlib, the figure (an instance of the class plt.Figure) can be thought of as a single container that contains all the objects representing axes, graphics, text, and labels. The axes (an instance of the class plt.Axes) is what we see above: a bounding box with ticks and labels, which will eventually contain the plot elements that make up our visualization. Throughout this book, we'll commonly use the variable name fig to refer to a figure instance, and ax to refer to an axes instance or group of axes instances.
+
+Once we have created an axes, we can use the ax.plot function to plot some data. Let's start with a simple sinusoid:"]
+
+^kind/void
+["fig = plt.figure()
+  ax = plt.axes()
+
+  x = np.linspace(0, 10, 1000)
+  ax.plot(x, np.sin(x));"]
+
+^kind/vega
+(->
+ (map #(identity {:x % :y (dtype-func/sin %)}) (range 0 10 1/10))
  (#(hanami-common/xform
     hanami-templates/line-chart
-    :WIDTH 1000 :HEIGHT 500
+    :WIDTH 600 :HEIGHT 400
     :ENCODINGS {:X :x
                 :Y :y}
-    :DATA %))
- (assoc-in [:encoding :strokeDash]
-           {:field :label
-            :type "nominal"}))
+    :DATA %)))
 
-
-
-
-
-
-
-
+["Alternatively, we can use the pylab interface and let the figure and axes be created for us in the background (see Two Interfaces for the Price of One for a discussion of these two interfaces):"]
