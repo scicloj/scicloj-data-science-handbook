@@ -42,6 +42,7 @@
          '[tablecloth.api :as tablecloth])
 
 (defn hanami-plot
+  "Syntactic sugar for hanami plots, lets you pipe data directly in a thread first macro"
   [data template & substitutions]
   (apply hanami-common/xform template :DATA data substitutions))
 
@@ -112,10 +113,11 @@ my-figure
 One nice feature of Matplotlib is the ability to save figures in a wide variety of formats. Saving a figure can be done using the savefig() command. For example, to save the previous figure as a PNG file, you can run this:"]
 
 (require '[applied-science.darkstar :as darkstar]
-         '[clojure.data.json :as json])
+         '[clojure.data.json :as json]
+         '[batik.rasterize :as batik])
 
 
-(defn save-plot! [m & [filename]]
+(defn save-plot! [m & [filename type]]
   (let [svg-render (if (= (:MODE m) "vega")
                      darkstar/vega-spec->svg
                      darkstar/vega-lite-spec->svg)]
@@ -123,12 +125,11 @@ One nice feature of Matplotlib is the ability to save figures in a wide variety 
      m
      json/write-str
      svg-render
-     (spit (or filename "plot.svg")))))
-
+     (#(if (#{:tif :tiff :png} type) (batik/render-svg-string % (or filename "plot.svg") type)
+           (spit (or filename "plot.svg") %))))))
 
 (save-plot! my-figure "my_figure.svg")
-
-["TO-DO render png"]
+(save-plot! my-figure "my_figure.png" :png)
 
 ["We now have a file called my_figure.png in the current working directory:"]
 
