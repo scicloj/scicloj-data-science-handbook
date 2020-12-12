@@ -39,6 +39,48 @@ In this chapter, we will focus on the mechanics of using datasets (?Series, Data
          '[tablecloth.api :as tablecloth]
          '[scicloj.helpers :as helpers])
 
+["## Data Selection in Series"]
+
+["### Series/Dataframe as dictionary"]
+
+(def data (tablecloth/dataset (zipmap [:a :b :c :d] [0.25 0.5 0.75 1.0])))
+
+^kind/dataset
+data
+
+["We can use dataset as function to select column:"]
+
+(data :b)
+
+["Or use keyword as function:"]
+
+(:b data)
+
+["Check whether there is a specific column with column name:"]
+
+(tablecloth/has-column? data :b)
+
+["We can also get all the column names with `column-names`"]
+
+(tablecloth/column-names data)
+
+["List all the columns"]
+
+(tablecloth/columns data)
+
+["We can add or update column:"]
+
+["update existing column"]
+
+(tablecloth/add-or-replace-column data :d 1.1)
+
+["add new column"]
+(tablecloth/add-or-replace-column data :e 1.25)
+
+
+["### Series as one-dimensional array"]
+
+
 
 ["## The tablecloth dataset (Series?) Object
 
@@ -69,4 +111,3 @@ population
 
 (vals population)
 (keys population)
-
