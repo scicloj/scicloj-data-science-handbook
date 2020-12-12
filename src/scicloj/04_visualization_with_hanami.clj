@@ -42,9 +42,8 @@
          '[tablecloth.api :as tablecloth])
 
 (defn hanami-plot
-  [data template & subs]
-  ^kind/vega
-  (apply hanami-common/xform template :DATA data subs))
+  [data template & substitutions]
+  (apply hanami-common/xform template :DATA data substitutions))
 
 ["### Setting Styles"
  "We will use the plt.style directive to choose appropriate aesthetic styles for our figures. Here we will set the classic style, which ensures that the plots we create use the classic Matplotlib style:"]
@@ -90,7 +89,7 @@ TO-DO need to clean all this:"]
 
 (def x-range (fastmath/slice-range 0 10 100))
 
-(def sin-cos
+(def sin-cos-data
   (->
    []
    (into (map #(identity {:x % :y (dtype-func/sin %) :label "sin"}) x-range))
@@ -98,7 +97,7 @@ TO-DO need to clean all this:"]
 
 (def my-figure
   (->
-   sin-cos
+   sin-cos-data
    (hanami-plot hanami-templates/line-chart)
    (#(assoc-in %
                [:encoding :strokeDash]
@@ -253,7 +252,7 @@ Once we have created an axes, we can use the ax.plot function to plot some data.
 
 ^kind/vega
 (->>
- sin-cos
+ sin-cos-data
  (hanami-plot hanami-templates/line-chart)
  (#(assoc-in %
              [:encoding :strokeDash]
