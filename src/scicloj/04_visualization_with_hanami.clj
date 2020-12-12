@@ -283,21 +283,20 @@ The first adjustment you might wish to make to a plot is to control the line col
   plt.plot(x, np.sin(x - 5), color='chartreuse'); # all HTML color names supported"]
 
 
-
 ^kind/vega
 (->
  []
- (into (map (fn [x] {:label 0 :x x :y (dtype-func/sin (- x 0))} :color "blue") x-range))
- (into (map (fn [x] {:label 1 :x x :y (dtype-func/sin (- x 1))} :color "g") x-range))
- (into (map (fn [x] {:label 2 :x x :y (dtype-func/sin (- x 2))} :color "0.75") x-range))
- (into (map (fn [x] {:label 3 :x x :y (dtype-func/sin (- x 3))} :color "#FFDD44") x-range))
- (into (map (fn [x] {:label 4 :x x :y (dtype-func/sin (- x 4))} :color "(1.0, 0.2, 0.3") x-range))
- (into (map (fn [x] {:label 5 :x x :y (dtype-func/sin (- x 5))} :color "chartreuse") x-range))
+ (into (map (fn [x] {:label 0 :x x :y (dtype-func/sin (- x 0)) :color "blue"}) x-range))
+ (into (map (fn [x] {:label 1 :x x :y (dtype-func/sin (- x 1)) :color "green"}) x-range))
+ (into (map (fn [x] {:label 2 :x x :y (dtype-func/sin (- x 2)) :color "hsl(0, 0%, 75%)"}) x-range))
+ (into (map (fn [x] {:label 3 :x x :y (dtype-func/sin (- x 3)) :color "#FFDD44"}) x-range))
+ (into (map (fn [x] {:label 4 :x x :y (dtype-func/sin (- x 4)) :color "rgb(256, 51, 77)"}) x-range))
+ (into (map (fn [x] {:label 5 :x x :y (dtype-func/sin (- x 5)) :color "chartreus"}) x-range))
  (#(hanami-common/xform
     hanami-templates/line-chart
     :WIDTH 600 :HEIGHT 500
     :ENCODINGS {:X :x
                 :Y :y}
-    :COLOR {:field :label}
+    :COLOR {:field :color :type "nominal" :scale nil}
     :DATA %)))
 
