@@ -257,8 +257,8 @@ Once we have created an axes, we can use the ax.plot function to plot some data.
 
 ^kind/vega
 (->> []
-  (into (map (fn [x] {:label 0 :x x :y (dtype-func/sin (- x 0))}) x-range))
-  (into (map (fn [x] {:label 0 :x x :y (dtype-func/cos (- x 0))}) x-range))
+  (into (map (fn [x] {:label "sin" :x x :y (dtype-func/sin x)}) x-range))
+  (into (map (fn [x] {:label "cos" :x x :y (dtype-func/cos x)}) x-range))
  (#(hanami-common/xform
     hanami-templates/line-chart
     :WIDTH 600 :HEIGHT 500
@@ -286,12 +286,12 @@ The first adjustment you might wish to make to a plot is to control the line col
 ^kind/vega
 (->
  []
- (into (map (fn [x] {:label 0 :x x :y (dtype-func/sin (- x 0)) :color "blue"}) x-range))
- (into (map (fn [x] {:label 1 :x x :y (dtype-func/sin (- x 1)) :color "green"}) x-range))
- (into (map (fn [x] {:label 2 :x x :y (dtype-func/sin (- x 2)) :color "hsl(0, 0%, 75%)"}) x-range))
- (into (map (fn [x] {:label 3 :x x :y (dtype-func/sin (- x 3)) :color "#FFDD44"}) x-range))
- (into (map (fn [x] {:label 4 :x x :y (dtype-func/sin (- x 4)) :color "rgb(256, 51, 77)"}) x-range))
- (into (map (fn [x] {:label 5 :x x :y (dtype-func/sin (- x 5)) :color "chartreus"}) x-range))
+ (into (map (fn [x] {:x x :y (dtype-func/sin (- x 0)) :color "blue"}) x-range))
+ (into (map (fn [x] {:x x :y (dtype-func/sin (- x 1)) :color "green"}) x-range))
+ (into (map (fn [x] {:x x :y (dtype-func/sin (- x 2)) :color "hsl(0, 0%, 75%)"}) x-range))
+ (into (map (fn [x] {:x x :y (dtype-func/sin (- x 3)) :color "#FFDD44"}) x-range))
+ (into (map (fn [x] {:x x :y (dtype-func/sin (- x 4)) :color "rgb(256, 51, 77)"}) x-range))
+ (into (map (fn [x] {:x x :y (dtype-func/sin (- x 5)) :color "chartreus"}) x-range))
  (#(hanami-common/xform
     hanami-templates/line-chart
     :WIDTH 600 :HEIGHT 500
