@@ -72,40 +72,187 @@ vec or array as follows:"]
 (def column1 (col/new-column :a-column [0.25 0.5 0.75 1.0]))
 ;; TODO: no notespace kind for column object at the moment
 column1
+;; => #tech.v3.dataset.column<object>[4]
+;;    :a-column
+;;    [0.2500, 0.5000, 0.7500, 1.000, ]
 
 (def column2 (col/new-column :a-column (float-array [0.25 0.5 0.75 1.0])))
 column2
+;; => #tech.v3.dataset.column<float32>[4]
+;;    :a-column
+;;    [0.2500, 0.5000, 0.7500, 1.000, ]
 
 ["As we see in the output, the Column wraps both a sequence of values, which we
 can access with the values and index attributes:"]
 
 (vec column1)
+;; => [0.25 0.5 0.75 1.0]
 
 (vec column2)
+;; => [0.25 0.5 0.75 1.0]
 
 ["Column can be accessed by the index. Just as clojure vector, you can invoke
 column with index as the argument:"]
 
 (column1 1)
+;; => 0.5
 
 ["You can also select rows by seq of indices:"]
 
 (col/select column1 [1 2])
+;; => #tech.v3.dataset.column<object>[2]
+;;    :a-column
+;;    [0.5000, 0.7500, ]
 
 (col/select column1 (range 1 3))
+;; => #tech.v3.dataset.column<object>[2]
+;;    :a-column
+;;    [0.5000, 0.7500, ]
+
+["It is different to Pandas Series that the index of rows can only be numbers."]
 
 
+["## The tech.ml Dataset Object"]
 
-["## The tech.ml.dataset"]
+["The next fundamental structure in tech.ml is the Dataset. The Dataset can be
+thought of columnar based map. We'll now take a look at each of these
+perspectives."]
 
-(def data (tablecloth/dataset [0.25 0.5 0.75 1.0]))
+(def state-names [:California :Texas :New-York :Florida :Illinois])
+state-names
+;; => [:California :Texas :New-York :Florida :Illinois]
+
+(def area [423967
+           695662
+           141297
+           170312
+           149995])
+
+(def area-ds (tablecloth/dataset {:area area}))
+^kind/dataset
+area-ds
+;; => _unnamed [5 1]:
+;;    |  :area |
+;;    |--------|
+;;    | 423967 |
+;;    | 695662 |
+;;    | 141297 |
+;;    | 170312 |
+;;    | 149995 |
+
+(def population [38332521
+                 26448193
+                 19651127
+                 19552860
+                 12882135])
+
+(def population-ds (tablecloth/dataset {:population population}))
+^kind/dataset
+population-ds
+;; => _unnamed [5 1]:
+;;    | :population |
+;;    |-------------|
+;;    |    38332521 |
+;;    |    26448193 |
+;;    |    19651127 |
+;;    |    19552860 |
+;;    |    12882135 |
+
+(def states (tablecloth/dataset {:name state-names
+                                 :area area
+                                 :population population}))
+^kind/dataset
+states
+;; => _unnamed [5 3]:
+;;    |       :name |  :area | :population |
+;;    |-------------|--------|-------------|
+;;    | :California | 423967 |    38332521 |
+;;    |      :Texas | 695662 |    26448193 |
+;;    |   :New-York | 141297 |    19651127 |
+;;    |    :Florida | 170312 |    19552860 |
+;;    |   :Illinois | 149995 |    12882135 |
+
+["You can get the column names with `column-names` API:"]
+
+(tablecloth/column-names states)
+;; => (:name :area :population)
+
+["`rows` API puts each row as vector in a vector:"]
+
+(tablecloth/rows states)
+;; => [[:California 423967 38332521] [:Texas 695662 26448193] [:New-York 141297 19651127] [:Florida 170312 19552860] [:Illinois 149995 12882135]]
+
+["### Dataset as specialized map"]
+
+["Similarly, we can also think of a Dataset as a specialization of a map, which
+maps a key to a value, a Dataset maps a column name to a Column data. For
+example, asking for the :area attribute returns the Column object containing the
+areas we saw earlier:"]
+
+(states :area)
+;; => #tech.v3.dataset.column<int64>[5]
+;;    :area
+;;    [423967, 695662, 141297, 170312, 149995, ]
+
+(:area states)
+;; => #tech.v3.dataset.column<int64>[5]
+;;    :area
+;;    [423967, 695662, 141297, 170312, 149995, ]
+
+["### Constructing Dataset objects"]
+
+["A Dataset can be constructed in a variety of ways. Here we'll give
+several examples."]
+
+["#### From a seq of map"]
+
+["Any seq of maps can be made into a Dataset. We'll use a simple `map` to create some data:"]
+
+(def data (map (fn [i] {:a i :b (* 2 i)}) (range 3)))
+^kind/dataset
+(tablecloth/dataset data)
+;; => _unnamed [3 2]:
+;;    | :a | :b |
+;;    |----|----|
+;;    |  0 |  0 |
+;;    |  1 |  2 |
+;;    |  2 |  4 |
+
+["Even if some keys in the map are missing, tablecloth will fill them in with
+NaN values:"]
 
 ^kind/dataset
-data
+(tablecloth/dataset [{:a 1 :b 2} {:b 3 :c 4}])
+;; => _unnamed [2 3]:
+;;    | :a | :b | :c |
+;;    |----|----|----|
+;;    |  1 |  2 |    |
+;;    |    |  3 |  4 |
 
-["## Data Selection in Series"]
+["From a map of seq objects"]
 
-["### Series/Dataframe as dictionary"]
+["As we saw before, a Dataset can be constructed from a map of seq objects as
+well:"]
+
+^kind/dataset
+(tablecloth/dataset {:name state-names
+                     :population population
+                     :area area})
+;; => _unnamed [5 3]:
+;;    |       :name | :population |  :area |
+;;    |-------------|-------------|--------|
+;;    | :California |    38332521 | 423967 |
+;;    |      :Texas |    26448193 | 695662 |
+;;    |   :New-York |    19651127 | 141297 |
+;;    |    :Florida |    19552860 | 170312 |
+;;    |   :Illinois |    12882135 | 149995 |
+
+
+["## Data Indexing and Selection"]
+
+["### Data Selection in Dataset"]
+
+["#### Dataset as map"]
 
 (def data (tablecloth/dataset (zipmap [:a :b :c :d] [0.25 0.5 0.75 1.0])))
 
@@ -140,10 +287,6 @@ data
 
 ["add new column"]
 (tablecloth/add-or-replace-column data :e 1.25)
-
-
-["### Series as one-dimensional array"]
-
 
 
 ["## The tablecloth dataset (Series?) Object
