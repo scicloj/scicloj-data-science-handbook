@@ -20,17 +20,36 @@ Evaluate `(notespace/init)` to clear the notespace.
 
 
 ## Generate a static journal
-`(notespace/render-static-html)` will generate a journal html page from your notespace.  It is highly recommended that you initialize the notespace first, to clear any unwanted notes from the REP state.
+`(notespace/render-static-html)` will generate a journal html page from your notespace.  It is highly recommended that you initialize the notespace first, to clear any unwanted notes from the REPL state.
 
 ```clojure
 (notespace/init)
 
-(notespace/render-static-html)
+(notespace/render-static-html "docs/chapter-name/sub-section.html")
 ```
 
-Put the journal html file into the `/docs` directory and add a link to the html page in the `docs/index.md` file, under the **Static Journals** section
-
+Edit the `docs/index.md` file and add a link to the generated html page under the [**Static Journals**](https://github.com/scicloj/scicloj-data-science-handbook/blob/live/docs/index.md#static-journals) section.
 
 > Please do not include significant parts of the text from the Python data science book as it has a "No Derivatives" license.
 
 Use the `^kind/hidden` tag on notes you do not wish to include in the generated journal.
+
+
+#### Helper code
+Add the following code to the end of the namespace to help generate a static journal, assuming you do not have key bindings / short-cuts available
+
+Update the chapter and section names for the specific namespace.
+
+```clojure
+^kind/hidden
+(comment
+
+  (require '[notespace.api :as notespace])
+
+  ;; Clean the notespace in the REPL state
+  (notespace/init)
+
+  ;; Generate a static journal as a html page
+  (notespace/render-static-html "docs/chapter-name/sub-section.html")
+  )
+```
