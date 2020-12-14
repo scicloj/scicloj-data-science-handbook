@@ -33,7 +33,8 @@ structures: the Column and Dataset.
 
 We will start our code sessions with the Tablecloth require:"]
 
-(require '[tech.v3.dataset.column :as col])
+(require '[tech.v3.dataset.column :as col]
+         '[tablecloth.api :as tablecloth])
 
 ["### The tech.ml.dataset Column Object"]
 
