@@ -53,6 +53,7 @@ states
 ["The individual Column that make up the DataFrame can be accessed via map-style
 indexing of the column name:"]
 
+^kind/dataset
 (states :area)
 ;; => #tech.v3.dataset.column<int64>[5]
 ;;    :area
@@ -61,6 +62,7 @@ indexing of the column name:"]
 ["Equivalently, we can use keyword-style access with column names that are
 keywords:"]
 
+^kind/dataset
 (:area states)
 ;; => #tech.v3.dataset.column<int64>[5]
 ;;    :area
@@ -81,8 +83,91 @@ can also be used to modify the object, in this case adding a new column:"]
 
 (require '[tech.v3.datatype.functional :as dfn])
 
-(assoc states :density (dfn// (states :pop) (states :area)))
+(def states (assoc states :density (dfn// (states :pop) (states :area))))
 
 ["This shows a preview of the straightforward syntax of element-by-element
 arithmetic between Column objects; we'll dig into this further in Operating on
 Data in Dataset."]
+
+["## Dataset as two-dimensional array"]
+
+["As mentioned previously, we can also view the Dataset as an enhanced
+two-dimensional array. We can examine the raw underlying data array using the
+values attribute:"]
+
+;; TODO how to convert all dataset to arrays?
+
+["With this picture in mind, many familiar array-like observations can be done
+on the DataFrame itself. For example, we can transpose the full DataFrame to
+swap rows and columns:"]
+
+;; TODO: How to transpose?
+
+["When it comes to indexing of Dataset objects, however, it is clear that the
+map-style indexing of columns precludes our ability to simply treat it as a
+NumPy array. In particular, passing a single index to an array accesses a row:"]
+
+^kind/dataset
+(tablecloth/select-rows states 0)
+
+["and passing a single \"index\" to a Dataset accesses a column:"]
+
+^kind/dataset
+(states :area)
+
+["Thus for array-style indexing, we need another convention. Here Pandas again
+uses the loc, iloc, and ix indexers mentioned earlier. Using the iloc indexer,
+we can index the underlying array as if it is a simple NumPy array (using the
+implicit Python-style index), but the DataFrame index and column labels are
+maintained in the result:"]
+
+;; TODO: loc, iloc and ix is not available in dataset
+
+^kind/dataset
+(tablecloth/select states [:name :area :pop] (range 3))
+
+["Any of the familiar NumPy-style data access patterns can be used within these
+indexers. For example, in the loc indexer we can combine masking and fancy
+indexing as in the following:"]
+
+^kind/dataset
+(tablecloth/select states [:name :pop :density] #(> (:density %) 100))
+
+["Any of these indexing conventions may also be used to set or modify values;
+this is done in the standard way that you might be accustomed to from working
+with NumPy:"]
+
+;; TODO: update-columns cannot update with value
+^kind/dataset
+(tablecloth/update-columns states [:density] (fn [x] 90))
+
+["To build up your fluency in Pandas data manipulation, I suggest spending some
+time with a simple DataFrame and exploring the types of indexing, slicing,
+masking, and fancy indexing that are allowed by these various indexing
+approaches."]
+
+["## Additional indexing conventions"]
+
+["There are a couple extra indexing conventions that might seem at odds with the
+preceding discussion, but nevertheless can be very useful in practice. First,
+while indexing refers to columns, slicing refers to rows:"]
+
+["select rows with seq of row ids and seq of true/false:"]
+
+["Such slices can also refer to rows by number rather than by index:"]
+
+^kind/dataset
+(tablecloth/select-rows states [0 1 2])
+
+^kind/dataset
+(tablecloth/select-rows states [true false true])
+
+["Similarly, direct masking operations are also interpreted row-wise rather than
+column-wise:"]
+
+^kind/dataset
+(tablecloth/select-rows states #(> (:density %) 100))
+
+["These two conventions are syntactically similar to those on a NumPy array, and
+while these may not precisely fit the mold of the Pandas conventions, they are
+nevertheless quite useful in practice."]
