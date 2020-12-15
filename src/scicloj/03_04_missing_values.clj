@@ -15,11 +15,11 @@
   ;; Evaluating a whole notespace
   (notespace/eval-this-notespace)
   ;; Generate static html
-  (notespace/render-static-html "docs/scicloj/ch03/"
-                                (clojure.string/replace
-                                 (last (clojure.string/split (str *ns*) #"\."))
-                                 "-" "_")
-                                ".html"))
+  (notespace/render-static-html (str "docs/scicloj/ch03/"
+                                     (clojure.string/replace
+                                      (last (clojure.string/split (str *ns*) #"\."))
+                                      "-" "_")
+                                     ".html")))
 
 ["# Handling Missing Data"]
 
@@ -191,3 +191,44 @@ number of non-null values for the row/column to be kept:"]
 non-null values."]
 
 ["### Filling null values"]
+
+["Sometimes rather than dropping NA values, you'd rather replace them with a
+valid value. This value might be a single number like zero, or it might be some
+sort of imputation or interpolation from the good values. You could do this
+in-place using the isnull() method as a mask, but because it is such a common
+operation tech.ml.dataset provides the `replace-missing` function, which returns
+a copy of the array with the null values replaced."]
+
+["Consider the following dataset:"]
+
+(def DS2 (tablecloth/dataset {:A [1 nil 2 nil 3]}))
+^kind/dataset
+DS2
+
+["We can fill NA entries with a single value, such as zero:"]
+
+^kind/dataset
+(tablecloth/replace-missing DS2 [:A] :value 0)
+
+["We can specify a down-fill to propagate the previous value down:"]
+
+^kind/dataset
+(tablecloth/replace-missing DS2 [:A] :down)
+
+["Or we can specify a up-fill to propagate the next values up:"]
+
+^kind/dataset
+(tablecloth/replace-missing DS2 [:A] :up)
+
+["Or we can specify a mid-fill to calculate the missing value:"]
+
+^kind/dataset
+(tablecloth/replace-missing DS2 [:A] :mid)
+
+["Or we can specify a Linear interpolation fill to calculate the missing value:"]
+
+^kind/dataset
+(tablecloth/replace-missing DS2 [:A] :lerp)
+
+["Notice that if a previous value is not available during a down fill, the up
+value are used."]
