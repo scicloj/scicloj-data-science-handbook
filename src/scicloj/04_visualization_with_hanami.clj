@@ -45,7 +45,7 @@ Before we dive into the details of creating visualizations with Hanami, here are
          '[tablecloth.api :as tablecloth])
 
 ["### For our convenience"
- "Lets start by defining a conveniance function that makes plot expression syntax slightly less verbose. The function is built so that it will receive the data we want to visualize as a first argument and thus enabling it to be used as is in a threa first, `->`, macro at the end of our data transformations"]
+ "Lets start by defining a conveniance function that makes plot expression syntax slightly less verbose. The function is built so that it will receive the data we want to visualize as a first argument and thus enabling it to be used as is in a thread first, `->`, macro at the end of our data transformations"]
 
 (defn hanami-plot
   "Syntactic sugar for hanami plots, lets you pipe data directly in a thread first macro"
@@ -87,11 +87,11 @@ So, for example, you may have a file called myplot.py containing the following:"
 
 
 ["#### Plotting from an Notespace notebook"
- "We are using notespace to do literate programming and rendering the plots. All the sections are decorated with Clojure metadata to let the rendering engine know what we want to happen with the section. `^kind/vega` for instance means that the following output should be rendered as a vega/vega-lite plot.
+ "We are using notespace to do literate programming and to render the plots. All the sections are decorated with Clojure metadata to let the rendering engine know what we want to happen with the section. `^kind/vega` for instance means that the following output should be rendered as a vega/vega-lite plot.
 
 Why we like Notespace is that we can continue to work from the editors we love, be it emacs, vi, vscode, IntelliJ, atom or any other that supports developing Clojure.
 
-Lets create some data and see how this can look lite:"]
+Lets create some data and see how the process can look."]
 
 ^kind/hidden
 ["### Plotting from an Notespace notebook"
@@ -106,7 +106,7 @@ After running this command (it needs to be done only once per kernel/session), a
 
 TO-DO need to clean all this:"]
 
-["First we create a range with 100 values from 0 to 10"]
+["First we will create a range with 100 values from 0 to 10"]
 (def x-range (fastmath/slice-range 0 10 100))
 
 (take 5 x-range)
@@ -116,15 +116,15 @@ TO-DO need to clean all this:"]
 
 (defn map-row
   "a helper to create a row (=map) of data in the form that vega likes"
-  [f label n]
-  {:x n, :y (f n), :label label})
+  [label x y]
+  {:x x, :y y, :label label})
 
-["The following helper uses the helper above and but also appends a new series with a label, x and a y that is calculated with the function passed to it in the options"]
+["The following helper uses the helper above and but also appends a new series with a label, x and a y. The x values are given as a parameter and the y values are calculated by applying the function, also passed as parameter, to x."]
 
 (defn add-series
   "append new series with transformation to dataset"
   [coll f label range]
-  (into coll (map (partial map-row f label) range)))
+  (into coll (map #(map-row label % (f %)) range)))
 
 ["Here is an example. We create a series with x as defined above and define y by adding a function that just doubles x"]
 
@@ -156,12 +156,14 @@ One nice feature of Matplotlib is the ability to save figures in a wide variety 
 
 Sometimes we want to to save the plots as files on our filesystem for other usages. Next we will look at how to create save the Vega/Vega-lite plots as SVGs on the filesystem or alternatively as PNG or TIFFs."]
 
+["First we will load some libraries to help us."]
+
 (require '[applied-science.darkstar :as darkstar]
          '[clojure.data.json :as json]
          '[batik.rasterize :as batik]
          '[clojure.string :as string])
 
-
+["Next we will need a simple helper again to do the saving."]
 (defn save-plot!
   [m & [filename type]]
   (let [svg-render (if (= (:MODE m) "vega")
@@ -173,6 +175,7 @@ Sometimes we want to to save the plots as files on our filesystem for other usag
          (#(if (#{:tif :tiff :png} type)
              (batik/render-svg-string % filename type)
              (spit (or filename "plot.svg") %))))))
+["This could be made much more robust with more features, but it will suffice for now. Now we can save the plot, by default our helper saves the file as an SVG but a number of formats can be used."]
 
 ^kind/void (save-plot! my-figure "my_figure.svg")
 
@@ -217,7 +220,7 @@ Sometimes we want to to save the plots as files on our filesystem for other usag
 
 ^kind/hidden
 ["Note that when saving your figure, it's not necessary to use plt.show() or related commands discussed earlier."]
-
+k
 ^kind/hidden
 ["## Two Interfaces for the Price of One¶
 
@@ -238,6 +241,12 @@ Matplotlib was originally written as a Python alternative for MATLAB users, and 
   plt.subplot(2, 1, 2)
   plt.plot(x, np.cos(x));"]
 
+["### Another example
+Now, lets use the previous plot that we still have saved in the my-figure var, and modify it a bit. The definition is just data after all. Lets have a peek. jAgain, not to fill this document with all the data we want to visualize, lets only take the first 5 lines"]
+
+(update-in my-figure [:data :values] (partial take 5))
+
+["What you see there is the vega-lite spec of the plot as a Clojure map but instead of json it is in `edn`, a data format we work with in Clojure and is a bit nicer to read. So what if we want to separate the figures to their own panels that are placed above each other. This can be achieved by adding and transformng these key value pairs in the specification, using the Clojure functions we are used to."]
 
 ^kind/vega
 (-> my-figure
@@ -264,6 +273,8 @@ The object-oriented interface is available for these more complicated situations
 
 
 ["# Simple Line Plots"]
+
+["We have now seen a couple of simple examples how do work with data and do plotting in Clojure with the help of Hanami and Vega/Vega-lite. In the following section we will go through the steps to make simple line plots in a bit more detail."]
 
 ^kind/hidden
 ["Perhaps the simplest of all plots is the visualization of a single function y=f(x). Here we will take a first look at creating a simple plot of this type. As with all the following sections, we'll start by setting up the notebook for plotting and importing the packages we will use:"]
@@ -468,6 +479,7 @@ Matplotlib does a decent job of choosing default axes limits for your plot, but 
 ^kind/hidden ["plt.plot(x, np.sin(x))
 plt.axis([-1, 11, -1.5, 1.5]);"]
 
+^kind/hidden
 ["The plt.axis() method goes even beyond this, allowing you to do things like automatically tighten the bounds around the current plot:"]
 
 ^kind/hidden ["plt.plot(x, np.sin(x))
