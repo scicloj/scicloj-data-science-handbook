@@ -1,4 +1,4 @@
-(ns scicloj.03-02-data-indexing-and-selection
+(ns scicloj.03-data-manipulation.02-data-indexing-and-selection
   (:require [notespace.api :as notespace]
             [notespace.kinds :as kind]
             [clojure.java.io :as io]))

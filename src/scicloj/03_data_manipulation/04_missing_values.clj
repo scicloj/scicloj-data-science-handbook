@@ -1,4 +1,4 @@
-(ns scicloj.03-04-missing-values
+(ns scicloj.03-data-manipulation.04-missing-values
   (:require [notespace.api :as notespace]
             [notespace.kinds :as kind]
             [clojure.java.io :as io]))

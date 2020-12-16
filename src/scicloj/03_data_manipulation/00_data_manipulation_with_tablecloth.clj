@@ -1,4 +1,4 @@
-(ns scicloj.03-data-manipulation-with-tablecloth
+(ns scicloj.03-data-manipulation.-with-tablecloth
   (:require [notespace.api :as notespace]
             [notespace.kinds :as kind]
             [clojure.java.io :as io]))

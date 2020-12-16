@@ -1,4 +1,4 @@
-(ns scicloj.03-03-operations-in-dataset
+(ns scicloj.03-data-manipulation.03-operations-in-dataset
   (:require [notespace.api :as notespace]
             [notespace.kinds :as kind]
             [clojure.java.io :as io]))
