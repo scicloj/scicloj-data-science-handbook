@@ -28,12 +28,12 @@ Python Data Science - ch.2. NumPy translated to Clojure
 In Clojure we use [dtype-next](https://github.com/cnuernber/dtype-next) (also known as
 `tech.v3.datatype`) and the convenient wrapper with a consistent API, [tablecloth](https://scicloj.github.io/tablecloth/),
 for working efficiently with dataset data."]
-
 (require
-  '[tech.v3.dataset :as ds]
-  '[tech.v3.datatype :as dtype]
-  '[tech.v3.tensor :as dtt]
-  '[tablecloth.api :as api])
+ '[tech.v3.dataset :as ds]
+ '[tech.v3.datatype :as dtype]
+ '[tech.v3.datatype.functional :as dtfn]
+ '[tech.v3.tensor :as dtt]
+ '[tablecloth.api :as api])
 
 ["### Creating Arrays from ~Python~ Lists
 
@@ -111,7 +111,16 @@ np.arange(0, 20, 2)
 np.linspace(0, 1, 5)
 "]
 
-(println "???")
+(defn ^{:doc "Temporary workaround, maybe there is a better way to do this"}
+  linspace
+  ([start stop] (linspace start stop 50))
+  ([start stop n]
+   (let [delta (- stop start)
+         end   (dec n)]
+     (dtt/->tensor (map (fn [i] (/ (* i delta) end))
+                        (range n))))))
+
+(linspace 0 1 5)
 
 ["Create a 3x3 array of uniformly distributed random values between 0 and 1
 ```python
@@ -140,7 +149,53 @@ np.random.randint(0, 10, (3, 3))
 np.eye(3)
 ```"]
 
-;; N/A
+["We currently do not have a good approximation of this technique.  However,
+it is easy enough to compute an identity matrix using an outer product operation."]
+
+(defn index
+  "Like range, but for tensors.  Enumerates the indicies."
+  [shape]
+  (let [space  (apply * shape)
+        rshape (reverse shape)
+        muls   (cons 1 (pop (vec (reductions * rshape))))]
+    (map
+     (fn [idx]
+       (reverse
+        (map (fn [p n]
+               (-> idx
+                   (quot n)
+                   (mod p)))
+             rshape
+             muls)))
+     (range space))))
+
+(index [3 3])
+
+(defn outer-product [f a b]
+  (let [final-shape (concat (dtype/shape a) (dtype/shape b))
+        size        (apply * final-shape)
+        index-a     (index (dtype/shape a))
+        index-b     (index (dtype/shape b))
+        indexes     (for [a index-a
+                          b index-b]
+                      [a b])]
+    (-> (dtype/make-reader
+         :object
+         size
+         (let [[a' b'] (nth indexes idx)]
+           (f (apply dtt/mget a a')
+              (apply dtt/mget b b'))))
+        (dtt/->tensor)
+        (dtt/reshape final-shape))))
+
+(defn eye [n]
+  (letfn [(= [a b] (if (clojure.core/= a b) 1 0))]
+    (outer-product = (dtt/->tensor (range n))
+                   (dtt/->tensor (range n)))))
+
+(eye 3)
+
+(eye 5)
 
 ["Create an uninitialized array of three integers. The values will be whatever happens to already exist at that memory location
 ```python
@@ -215,6 +270,149 @@ Ex.: `x[4]`, `x[-1]`, `x[1,2]`"]
 `x[start:stop:step]`, e.g. `x[::2]  # every other element`, `x[5::-2]  # reversed every other from index 5`"]
 
 ;; see https://cnuernber.github.io/dtype-next/tech.v3.datatype.html#var-sub-buffer - not sure if possible to somehow define the "step" - perhaps using argops and indexed-buffer
+
+(defn ravel [t]
+  (let [dt    (dtype/get-datatype t)
+        shape (dtype/shape t)
+        idx'  (index shape)]
+    (-> (dtype/make-reader dt (apply * shape) (apply dtt/mget t (nth idx' idx)))
+        (dtt/->tensor))))
+(dtype/get-datatype x)
+(dtype/shape x)
+(index (dtype/shape x))
+(ravel x)
+
+(defn mask [f t]
+  (-> (dtype/emap #(if (f %) 1 0) :int32 t)
+      dtt/->tensor
+      ravel))
+
+(mask #(= 1 %) x)
+
+
+(defn compress [lhs rhs]
+  (let [lhr   (ravel lhs)
+        rhr   (ravel rhs)
+        dt    (dtype/get-datatype rhs)
+        shape (dtype/shape lhs)
+        idx'  (into []
+                    (comp
+                     (partition-all 2)
+                     (map #(repeat (first %) (second %)))
+                     cat)
+                    (interleave (ravel lhs) (index shape)))
+        size  (count idx')]
+    (-> (dtype/make-reader dt size (apply dtt/mget rhr (nth idx' idx)))
+        (dtt/->tensor))))
+
+
+
+(compress (mask (partial = 1) x) x)
+
+
+(defn ^:shameful start-stop-step-reverse [start stop step]
+  (def start start)
+  (def stop stop)
+  (def step step)
+  (cond
+    (and start stop step (pos? step)) ;; x[1:10:2]
+    [start stop step false]
+    (and start stop (nil? step)) ;; x[1:10]
+    [start stop 1 false]
+    (and start stop step (neg? step)) ;; x[1:10:-1]
+    [stop start (Math/abs step) true]
+    (and start (nil? stop) step (pos? step)) ;; x[1::2]
+    [start (first (dtype/shape t)) step false]
+    (and start (nil? stop) (nil? step)) ;; x[1::]
+    [start (first (dtype/shape t)) 1 false]
+    (and start (nil? stop) step (neg? step)) ;; x[1::-2]
+    [0 start (Math/abs step) true]
+    (and (nil? start) stop step (pos? step)) ;; x[:5:2]
+    [0 stop step false]
+    (and (nil? start) stop (nil? step)) ;; x[:5]
+    [0 stop 1 false]
+    (and (nil? start) stop step (neg? step)) ;; x[:5:-2]
+    [stop (dec (first (dtype/shape t))) (Math/abs step) true]
+    (and (nil? start) (nil? stop) step (pos? step)) ;; x[::2]
+    [0 (first (dtype/shape t)) step false]
+    (and (nil? start) (nil? stop) (nil? step)) ;; x[::]
+    [0 (first (dtype/shape t)) 1 false]
+    (and (nil? start) (nil? stop) step (neg? step)) ;; x[::-2]
+    [(dec (first (dtype/shape t))) 0 (Math/abs step) true]))
+
+
+(comment
+  
+  (start-stop-step-reverse 10 20 nil)
+
+  ,)
+(defn
+  ^{:doc
+    "API mostly matches API of numpy, except for some corner cases,
+and an off-by-one error on some negative steps. 
+This is the most horrible thing I've ever written.  Someone please help. :(
+--JJ"}
+  array-slice
+  ([t stop] (array-slice t nil stop nil))
+  ([t start stop] (array-slice t start stop nil))
+  ([t start stop step]
+   (do (ns-unmap *ns* 'start')
+       (ns-unmap *ns* 'stop')
+       (ns-unmap *ns* 'step')
+       (ns-unmap *ns* 'reverse?'))
+   (let [[start stop step reverse?]
+         (start-stop-step-reverse start stop step)
+         _ (def start' start)
+         _ (def stop' stop)
+         _ (def step' step)
+         _ (def reverse?' reverse?)
+         upper-bound (partial > stop)
+         lower-bound (partial <= start)
+         modulus     (partial mod (Math/abs step))
+         bounds      (mask #(and (upper-bound %) (lower-bound %)) t)
+         shape       (dtype/shape bounds)
+         idx'        (transduce (take-nth (Math/abs step))
+                                (fn ([res]
+                                     (if reverse?
+                                       (reverse (persistent! res))
+                                       (persistent! res)))
+                                  ([res next] (conj! res next)))
+                                (transient [])
+                                (index shape))]
+     
+     
+     (when (not-empty idx')
+       (->> (dtype/make-reader :object
+                               (count idx')
+                               (apply dtt/mget t (nth idx' idx)))
+            (dtt/->tensor))))))
+
+["These work as expected"]
+(array-slice x 0 20 2)
+(array-slice x nil 20 2)
+(array-slice x nil nil 2)
+(array-slice x 0 nil 2)
+
+(array-slice x 20 0 -2)
+(array-slice x 20 nil -2)
+(array-slice x nil 0 -2)
+(array-slice x nil nil -2)
+
+(start-stop-step-reverse 0 20 nil)
+(array-slice 0 20 nil)
+
+
+
+
+(array-slice x 0 nil -2)
+different
+(array-slice x 20 nil -2)
+
+(array-slice x 5 nil -1)
+
+
+
+
 
 ["### Multi-dimensional subarrays
 
