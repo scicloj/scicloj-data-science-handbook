@@ -4,9 +4,6 @@
             [clojure.java.io :as io]))
 
 ;; Notespace
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Listen for changes in the namespace and update notespace automatically
-;; Hidden kinds should not show in the notespace page
 ^kind/hidden
 (comment
   ;; Manually start an empty notespace
@@ -17,11 +14,10 @@
   (notespace/init)
   ;; Evaluating a whole notespace
   (notespace/eval-this-notespace)
-    ;; generate static site
-  (notespace/render-static-html "docs/scicloj/ch03/03_01_introducing_dataset_object.html"))
+  ;; Generate static site
+  (notespace/render-static-html))
 
-
-["## Introducing Tablecloth Objects"]
+["# Introducing Tablecloth Objects"]
 
 ["At the very basic level, Tablecloth dataset is using tech.ml.dataset as the
 base. It is in-memory columnwise database. As we will see during the course of
@@ -33,143 +29,129 @@ structures: the Column and Dataset.
 
 We will start our code sessions with the Tablecloth require:"]
 
-(require '[tech.v3.dataset.column :as col]
-         '[tablecloth.api :as tablecloth])
+(require '[tablecloth.api :as tablecloth])
 
-["### The tech.ml.dataset Column Object"]
+;; TODO: as there is no Series object in tablecloth, we will skip Series Object section
+;; To start with Dataset object
 
-["A Column is a one-dimensional array of indexed data. It can be created from a
-vec or array as follows:"]
+["## Constructing Dataset objects"]
 
-(def column1 (col/new-column :a-column [0.25 0.5 0.75 1.0]))
-;; TODO: no notespace kind for column object at the moment
-column1
-;; => #tech.v3.dataset.column<object>[4]
-;;    :a-column
-;;    [0.2500, 0.5000, 0.7500, 1.000, ]
+["The fundamental structure in tablecloth is the Dataset. The Dataset can be
+thought of either as a generalization of a NumPy array, or as a specialization
+of a Clojure dictionary. We'll now take a look at each of these perspectives.
 
-(def column2 (col/new-column :a-column (float-array [0.25 0.5 0.75 1.0])))
-column2
-;; => #tech.v3.dataset.column<float32>[4]
-;;    :a-column
-;;    [0.2500, 0.5000, 0.7500, 1.000, ]
+A Dataset can be constructed in a variety of ways. Here we'll give
+several examples."]
 
-["As we see in the output, the Column wraps both a sequence of values, which we
-can access with the values and index attributes:"]
+["### Dataset as a generalized NumPy array"]
 
-(vec column1)
-;; => [0.25 0.5 0.75 1.0]
+["If a Series is an analog of a one-dimensional array with flexible indices, a
+Dataset is an analog of a two-dimensional array with both flexible row indices
+and flexible column names. Just as you might think of a two-dimensional array as
+an ordered sequence of aligned one-dimensional columns, you can think of a
+Dataset as a sequence of aligned Column objects. Here, by \"aligned\" we mean
+that they share the same index.
 
-(vec column2)
-;; => [0.25 0.5 0.75 1.0]
+To demonstrate this, let's first construct a new Dataset listing the area of
+each of the five states discussed in the previous section:"]
 
-["Column can be accessed by the index. Just as clojure vector, you can invoke
-column with index as the argument:"]
+(def names ["California" "Texas" "New York" "Florida" "Illinois"])
+(def area [423967 695662 141297 170312 149995])
+(def area-map {:name names
+               :area area})
 
-(column1 1)
-;; => 0.5
+^kind/dataset
+(tablecloth/dataset area-map)
+;; => _unnamed [5 2]:
+;;    |      :name |  :area |
+;;    |------------|--------|
+;;    | California | 423967 |
+;;    |      Texas | 695662 |
+;;    |   New York | 141297 |
+;;    |    Florida | 170312 |
+;;    |   Illinois | 149995 |
 
-["You can also select rows by seq of indices:"]
+["Now that we have this along with the population Column map from before, we can
+use a map to construct a single two-dimensional object containing this
+information:"]
 
-(col/select column1 [1 2])
-;; => #tech.v3.dataset.column<object>[2]
-;;    :a-column
-;;    [0.5000, 0.7500, ]
+(def population [38332521 19552860 12882135 19651127 26448193])
 
-(col/select column1 (range 1 3))
-;; => #tech.v3.dataset.column<object>[2]
-;;    :a-column
-;;    [0.5000, 0.7500, ]
-
-["It is different to Pandas Series that the index of rows can only be numbers."]
-
-
-["## The tech.ml Dataset Object"]
-
-["The next fundamental structure in tech.ml is the Dataset. The Dataset can be
-thought of columnar based map. We'll now take a look at each of these
-perspectives."]
-
-["`tech.ml.dataset` is a Clojure library for data processing and machine
-learning. Datasets are currently in-memory columnwise databases and support
-parsing from file or input-stream."]
-
-["To demonstrate this, let's first construct a new Dataset listing the area and
-population of each of the five states:"]
-
-(def state-name [:California :Texas :New-York :Florida :Illinois])
-(def state-area [423967 695662 141297 170312 149995])
-(def state-population [38332521 26448193 19651127 19552860 12882135])
-
-["Now we can use maps to construct a single two-dimensional object containing
-this information:"]
-
-(def states (tablecloth/dataset {:name state-name
-                                 :area state-area
-                                 :population state-population}))
+(def states (tablecloth/dataset {:name names
+                                 :area area
+                                 :population population}))
 ^kind/dataset
 states
-;; => _unnamed [5 3]:
-;;    |       :name |  :area | :population |
-;;    |-------------|--------|-------------|
-;;    | :California | 423967 |    38332521 |
-;;    |      :Texas | 695662 |    26448193 |
-;;    |   :New-York | 141297 |    19651127 |
-;;    |    :Florida | 170312 |    19552860 |
-;;    |   :Illinois | 149995 |    12882135 |
 
-["You can get the column names with `column-names` API:"]
+["The Dataset row is indexed by numbers:"]
+^kind/dataset
+(tablecloth/select-rows states 0)
+
+^kind/dataset
+(tablecloth/select-rows states [0 1 2])
+
+["Additionally, the Dataset has a columns attribute, which is an Index object
+holding the column labels:"]
 
 (tablecloth/column-names states)
-;; => (:name :area :population)
 
-["`rows` API puts each row as vector in a vector:"]
-
-(tablecloth/rows states)
-;; => [[:California 423967 38332521] [:Texas 695662 26448193] [:New-York 141297 19651127] [:Florida 170312 19552860] [:Illinois 149995 12882135]]
-
-["`columns` API puts each column as vector in a vector:"]
-
-(tablecloth/columns states)
-
+["Thus the Dataset can be thought of as a generalization of a two-dimensional
+NumPy array, where both the rows and columns have a generalized index for
+accessing the data."]
 
 ["### Dataset as specialized map"]
 
-["Similarly, we can also think of a Dataset as a specialization of a map, which
-maps a key to a value, a Dataset maps a column name to a Column data. For
-example, asking for the :area attribute returns the Column object containing the
-areas we saw earlier:"]
+["Similarly, we can also think of a Dataset as a specialization of a map. Where
+a map maps a key to a value, a Dataset maps a column name to a column data. For
+example, asking for the 'area' attribute returns the sub-dataset object
+containing the areas we saw earlier:"]
 
-(states :area)
-;; => #tech.v3.dataset.column<int64>[5]
-;;    :area
-;;    [423967, 695662, 141297, 170312, 149995, ]
+^kind/dataset
+(tablecloth/select-columns states :area)
 
-(:area states)
-;; => #tech.v3.dataset.column<int64>[5]
-;;    :area
-;;    [423967, 695662, 141297, 170312, 149995, ]
+["Notice the potential point of confusion here: in a two-dimesnional NumPy
+array, data[0] will return the first row. For a DataFrame, data['col0'] will
+return the first column. Because of this, it is probably better to think about
+Datasets as generalized maps rather than generalized arrays, though both ways of
+looking at the situation can be useful. We'll explore more flexible means of
+indexing Datasets in Data Indexing and Selection."]
 
 ["### Constructing Dataset objects"]
 
-["A Dataset can be constructed in a variety of ways. Here we'll give
+["A tableclot Dataset can be constructed in a variety of ways. Here we'll give
 several examples."]
+
+["#### From a map of column name and values seq"]
+
+["A Dataset is a collection of Column objects, and a single-column Dataset can
+be constructed from a map of column namd and values seq:"]
+
+^kind/dataset
+(tablecloth/dataset {:population population})
+;; => _unnamed [5 1]:
+;;    | :population |
+;;    |-------------|
+;;    |    38332521 |
+;;    |    19552860 |
+;;    |    12882135 |
+;;    |    19651127 |
+;;    |    26448193 |
 
 ["#### From a sequence of map"]
 
 ["Any seq of maps can be made into a Dataset. We'll use a simple `map` to create
 some data:"]
 
-(def data (map (fn [i] {:a i :b (* 2 i)}) (range 3)))
+(def data (map (fn [i] {:row-id i :a i :b (* 2 i)}) (range 3)))
 
 ^kind/dataset
 (tablecloth/dataset data)
-;; => _unnamed [3 2]:
-;;    | :a | :b |
-;;    |----|----|
-;;    |  0 |  0 |
-;;    |  1 |  2 |
-;;    |  2 |  4 |
+;; => _unnamed [3 3]:
+;;    | :row-id | :a | :b |
+;;    |---------|----|----|
+;;    |       0 |  0 |  0 |
+;;    |       1 |  1 |  2 |
+;;    |       2 |  2 |  4 |
 
 ["Even if some keys in the map are missing, tablecloth will fill them in with
 NaN values:"]
@@ -182,27 +164,42 @@ NaN values:"]
 ;;    |  1 |  2 |    |
 ;;    |    |  3 |  4 |
 
-["#### From a map of sequence objects"]
+["#### From a map of sequence"]
 
 ["As we saw before, a Dataset can be constructed from a map of seq objects as
 well:"]
 
 ^kind/dataset
-(tablecloth/dataset {:name state-name
-                     :population state-population
-                     :area state-area})
+(tablecloth/dataset {:name names
+                     :population population
+                     :area area})
 ;; => _unnamed [5 3]:
-;;    |       :name | :population |  :area |
-;;    |-------------|-------------|--------|
-;;    | :California |    38332521 | 423967 |
-;;    |      :Texas |    26448193 | 695662 |
-;;    |   :New-York |    19651127 | 141297 |
-;;    |    :Florida |    19552860 | 170312 |
-;;    |   :Illinois |    12882135 | 149995 |
+;;    |      :name | :population |  :area |
+;;    |------------|-------------|--------|
+;;    | California |    38332521 | 423967 |
+;;    |      Texas |    19552860 | 695662 |
+;;    |   New York |    12882135 | 141297 |
+;;    |    Florida |    19651127 | 170312 |
+;;    |   Illinois |    26448193 | 149995 |
 
 ["or sequence of pairs:"]
 
 ^kind/dataset
-(tablecloth/dataset [[:name state-name]
-                     [:population state-population]
-                     [:area state-area]])
+(tablecloth/dataset [[:name names]
+                     [:population population]
+                     [:area area]])
+;; => _unnamed [5 3]:
+;;    |      :name | :population |  :area |
+;;    |------------|-------------|--------|
+;;    | California |    38332521 | 423967 |
+;;    |      Texas |    19552860 | 695662 |
+;;    |   New York |    12882135 | 141297 |
+;;    |    Florida |    19651127 | 170312 |
+;;    |   Illinois |    26448193 | 149995 |
+
+;; TODO: Tablecloth do not support this way:
+#_["#### From a two-dimensional NumPy array"]
+
+#_["Given a two-dimensional array of data, we can create a DataFrame with any
+specified column and index names. If omitted, an integer index will be used for
+each:"]

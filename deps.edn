@@ -5,7 +5,7 @@
  {org.clojure/clojure {:mvn/version "1.10.1"}
 
   scicloj/notespace  {:mvn/version "3-alpha3-SNAPSHOT"}
-  scicloj/tablecloth {:mvn/version "5.00-beta-5a"}
+  scicloj/tablecloth {:mvn/version "5.00-beta-21a"}
 
   aerial.hanami/aerial.hanami {:mvn/version "0.12.4"}
   generateme/fastmath         {:mvn/version "2.0.5"}
