@@ -1,12 +1,9 @@
-(ns scicloj.03-02-data-indexing-and-selection
+(ns scicloj.03-data-manipulation.02-data-indexing-and-selection
   (:require [notespace.api :as notespace]
             [notespace.kinds :as kind]
             [clojure.java.io :as io]))
 
 ;; Notespace
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Listen for changes in the namespace and update notespace automatically
-;; Hidden kinds should not show in the notespace page
 ^kind/hidden
 (comment
   ;; Manually start an empty notespace
@@ -18,7 +15,7 @@
   ;; Evaluating a whole notespace
   (notespace/eval-this-notespace)
     ;; generate static site
-  (notespace/render-static-html "docs/scicloj/ch03/03_02_data_indexing_and_selection.html"))
+  (notespace/render-static-html))
 
 ["In Chapter 2, we looked in detail at methods and tools to access, set, and
 modify values in clojure vec and map. These included indexing (e.g., `(avec 2)`
@@ -41,19 +38,18 @@ structure."]
 objects. Let's return to our example of areas and populations of states:"]
 
 (require '[tablecloth.api :as tablecloth])
-(def state-name [:California :Texas :New-York :Florida :Illinois])
-(def state-area [423967 695662 141297 170312 149995])
-(def state-population [38332521 26448193 19651127 19552860 12882135])
-(def states (tablecloth/dataset {:name state-name
-                                 :area state-area
-                                 :pop state-population}))
+(def names ["California" "Texas" "New York" "Florida" "Illinois"])
+(def area [423967 695662 141297 170312 149995])
+(def population [38332521 26448193 19651127 19552860 12882135])
+(def states (tablecloth/dataset {:name names
+                                 :area area
+                                 :population population}))
 ^kind/dataset
 states
 
 ["The individual Column that make up the DataFrame can be accessed via map-style
 indexing of the column name:"]
 
-^kind/dataset
 (states :area)
 ;; => #tech.v3.dataset.column<int64>[5]
 ;;    :area
@@ -62,7 +58,6 @@ indexing of the column name:"]
 ["Equivalently, we can use keyword-style access with column names that are
 keywords:"]
 
-^kind/dataset
 (:area states)
 ;; => #tech.v3.dataset.column<int64>[5]
 ;;    :area
@@ -83,7 +78,9 @@ can also be used to modify the object, in this case adding a new column:"]
 
 (require '[tech.v3.datatype.functional :as dfn])
 
-(def states (assoc states :density (dfn// (states :pop) (states :area))))
+(def states (assoc states :density (dfn// (states :population) (states :area))))
+^kind/dataset
+states
 
 ["This shows a preview of the straightforward syntax of element-by-element
 arithmetic between Column objects; we'll dig into this further in Operating on
@@ -124,14 +121,14 @@ maintained in the result:"]
 ;; TODO: loc, iloc and ix is not available in dataset
 
 ^kind/dataset
-(tablecloth/select states [:name :area :pop] (range 3))
+(tablecloth/select states [:name :area :population] (range 3))
 
 ["Any of the familiar NumPy-style data access patterns can be used within these
 indexers. For example, in the loc indexer we can combine masking and fancy
 indexing as in the following:"]
 
 ^kind/dataset
-(tablecloth/select states [:name :pop :density] #(> (:density %) 100))
+(tablecloth/select states [:name :population :density] #(> (:density %) 100))
 
 ["Any of these indexing conventions may also be used to set or modify values;
 this is done in the standard way that you might be accustomed to from working

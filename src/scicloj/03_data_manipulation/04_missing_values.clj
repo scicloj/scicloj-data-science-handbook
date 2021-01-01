@@ -1,4 +1,4 @@
-(ns scicloj.03-04-missing-values
+(ns scicloj.03-data-manipulation.04-missing-values
   (:require [notespace.api :as notespace]
             [notespace.kinds :as kind]
             [clojure.java.io :as io]))
@@ -15,11 +15,7 @@
   ;; Evaluating a whole notespace
   (notespace/eval-this-notespace)
   ;; Generate static html
-  (notespace/render-static-html "docs/scicloj/ch03/"
-                                (clojure.string/replace
-                                 (last (clojure.string/split (str *ns*) #"\."))
-                                 "-" "_")
-                                ".html"))
+  (notespace/render-static-html))
 
 ["# Handling Missing Data"]
 
@@ -123,9 +119,10 @@ tech.ml.dataset:"]
 ["tech.ml.dataset data structures have two useful methods for detecting null data:
 `missing`. Either one will return a Boolean mask over the data. For example:"]
 
-(def data (tablecloth/dataset {:A [1 "hello" nil]}))
+(def data (tablecloth/dataset {:A [1 Float/NaN "hello" nil]}))
 
 (ds/missing data)
+;; => {3}
 
 ["### Dropping null values"]
 
@@ -134,14 +131,26 @@ tech.ml.dataset:"]
 NA values). For a Series, the result is straightforward:"]
 
 (tablecloth/drop-missing data)
+;; => _unnamed [3 1]:
+;;    |    :A |
+;;    |-------|
+;;    | 1.000 |
+;;    |   NAN |
+;;    | hello |
 
 ["For a DataFrame, there are more options. Consider the following DataFrame:"]
 
-(def DS (tablecloth/dataset {:A [1 2 nil]
-                             :B [nil 3 4]
-                             :C [2 5 6]}))
+(def DS (tablecloth/dataset {0 [1 2 Float/NaN ]
+                             1 [Float/NaN 3 4]
+                             2 [2 5 6]}))
 ^kind/dataset
 DS
+;; => _unnamed [3 3]:
+;;    |   0 |   1 | 2 |
+;;    |-----|-----|---|
+;;    | 1.0 | NaN | 2 |
+;;    | 2.0 | 3.0 | 5 |
+;;    | NaN | 4.0 | 6 |
 
 ["We cannot drop single values from a DataFrame; we can only drop full rows or
 full columns. Depending on the application, you might want one or the other, so
@@ -150,6 +159,12 @@ dropna() gives a number of options for a DataFrame.
 By default, dropna() will drop all rows in which any null value is present:"]
 
 (tablecloth/drop-missing DS)
+;; => _unnamed [3 3]:
+;;    |   0 |   1 | 2 |
+;;    |-----|-----|---|
+;;    | 1.0 | NaN | 2 |
+;;    | 2.0 | 3.0 | 5 |
+;;    | NaN | 4.0 | 6 |
 
 ["Alternatively, you can drop NA values along a different axis; axis=1 drops all
 columns containing a null value:"]
@@ -191,3 +206,44 @@ number of non-null values for the row/column to be kept:"]
 non-null values."]
 
 ["### Filling null values"]
+
+["Sometimes rather than dropping NA values, you'd rather replace them with a
+valid value. This value might be a single number like zero, or it might be some
+sort of imputation or interpolation from the good values. You could do this
+in-place using the isnull() method as a mask, but because it is such a common
+operation tech.ml.dataset provides the `replace-missing` function, which returns
+a copy of the array with the null values replaced."]
+
+["Consider the following dataset:"]
+
+(def DS2 (tablecloth/dataset {:A [1 nil 2 nil 3]}))
+^kind/dataset
+DS2
+
+["We can fill NA entries with a single value, such as zero:"]
+
+^kind/dataset
+(tablecloth/replace-missing DS2 [:A] :value 0)
+
+["We can specify a down-fill to propagate the previous value down:"]
+
+^kind/dataset
+(tablecloth/replace-missing DS2 [:A] :down)
+
+["Or we can specify a up-fill to propagate the next values up:"]
+
+^kind/dataset
+(tablecloth/replace-missing DS2 [:A] :up)
+
+["Or we can specify a mid-fill to calculate the missing value:"]
+
+^kind/dataset
+(tablecloth/replace-missing DS2 [:A] :mid)
+
+["Or we can specify a Linear interpolation fill to calculate the missing value:"]
+
+^kind/dataset
+(tablecloth/replace-missing DS2 [:A] :lerp)
+
+["Notice that if a previous value is not available during a down fill, the up
+value are used."]

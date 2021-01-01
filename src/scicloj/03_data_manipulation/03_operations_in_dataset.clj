@@ -1,12 +1,9 @@
-(ns scicloj.03-03-operations-in-dataset
+(ns scicloj.03-data-manipulation.03-operations-in-dataset
   (:require [notespace.api :as notespace]
             [notespace.kinds :as kind]
             [clojure.java.io :as io]))
 
 ;; Notespace
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;; Listen for changes in the namespace and update notespace automatically
-;; Hidden kinds should not show in the notespace page
 ^kind/hidden
 (comment
   ;; Manually start an empty notespace
@@ -17,8 +14,8 @@
   (notespace/init)
   ;; Evaluating a whole notespace
   (notespace/eval-this-notespace)
-    ;; generate static site
-  (notespace/render-static-html "docs/scicloj/ch03/03_03_operations_in_dataset.html"))
+  ;; Generate static site
+  (notespace/render-static-html))
 
 ["# Operating on Data in Dataset"]
 
@@ -75,7 +72,7 @@ indices in the process of performing the operation. This is very convenient when
 working with incomplete data, as we'll see in some of the examples that
 follow."]
 
-["### Index alignment in DataFrame"]
+["### Index alignment in Dataset"]
 
 ["A similar type of alignment takes place for both columns and indices when
 performing operations on DataFrames:"]
@@ -83,15 +80,61 @@ performing operations on DataFrames:"]
 (def A
   (tablecloth/dataset
    (zipmap [:A :B]
-           (repeatedly 2 (fn [] (repeatedly 2 #(fm.rand/frand 20)))))))
+           (repeatedly 2 (fn [] (repeatedly 2 #(fm.rand/irand 20)))))))
 ^kind/dataset
 A
+;; => _unnamed [2 2]:
+;;    | :A | :B |
+;;    |----|----|
+;;    |  1 |  7 |
+;;    |  7 | 18 |
 
 (def B
   (tablecloth/dataset
    (zipmap [:B :A :C]
-           (repeatedly 3 (fn [] (repeatedly 3 #(fm.rand/frand 20)))))))
+           (repeatedly 3 (fn [] (repeatedly 3 #(fm.rand/irand 20)))))))
 ^kind/dataset
 B
+;; => _unnamed [3 3]:
+;;    | :B | :A | :C |
+;;    |----|----|----|
+;;    |  8 |  5 | 11 |
+;;    |  2 | 15 | 13 |
+;;    |  9 |  3 |  3 |
 
 ;; TODO: How to A + B?
+;; (tablecloth/+ A B)?
+
+["Notice that indices are aligned correctly irrespective of their order in the
+two objects, and indices in the result are sorted. As was the case with Series,
+we can use the associated object's arithmetic method and pass any desired
+fill_value to be used in place of missing entries. Here we'll fill with the mean
+of all values in A (computed by first stacking the rows of A):
+
+```python
+fill = A.stack().mean()
+A.add(B, fill_value=fill)
+```
+"]
+
+["The following table lists Python operators and their equivalent Pandas object
+methods:
+```
++ 	add()
+- 	sub(), subtract()
+* 	mul(), multiply()
+/ 	truediv(), div(), divide()
+// 	floordiv()
+% 	mod()
+** 	pow()
+```"]
+
+["## Ufuncs: Operations Between DataFrame and Series"]
+
+["When performing operations between a DataFrame and a Series, the index and
+column alignment is similarly maintained. Operations between a DataFrame and a
+Series are similar to operations between a two-dimensional and one-dimensional
+NumPy array. Consider one common operation, where we find the difference of a
+two-dimensional array and one of its rows:"]
+
+;; TODO ...
