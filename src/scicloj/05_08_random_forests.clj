@@ -11,15 +11,16 @@
            [+ - * /]]
          '[tech.viz.vega :as viz]
          '[tablecloth.api :as tablecloth])
+
 (comment
- ;; Manually start an empty notespace
- (notespace/init-with-browser)
- ;; Renders the notes and listens to file changes
- (notespace/listen)
- ;; Clear an existing notespace browser
- (notespace/init)
- ;; Evaluating a whole notespace
- (notespace/eval-this-notespace))
+  ;; Manually start an empty notespace
+  (notespace/init-with-browser)
+  ;; Renders the notes and listens to file changes
+  (notespace/listen)
+  ;; Clear an existing notespace browser
+  (notespace/init)
+  ;; Evaluating a whole notespace
+  (notespace/eval-this-notespace))
 
 ["Trying to mimic the make-blob function of sklearn (not sure about its implementation at the moment):"]
 
@@ -77,27 +78,87 @@
 (require '[tech.v3.ml :as ml]
          '[tech.v3.libs.smile.classification]
          '[tech.v3.libs.smile.regression]
-         '[tech.v3.dataset.modelling :as ds-mod])
+         '[tech.v3.dataset.modelling :as ds-mod]
+         '[tech.v3.dataset :as ds]
+         )
+
 
 (def blob
   (-> (random/rng :isaac 1123)
       (make-blob 300 4 1)
-      (ds-mod/set-inference-target :i)))
+      ))
 
 
+(def blob
+  (-> blob
+      (ds/add-column
+       (->
+        (ds/new-column  :_i (map #(str "_" %)
+                                 (blob :i))
+                        {:categorical? true}
+                        )
+        )
+       )
+      (tablecloth/drop-columns :i)
+      (ds-mod/set-inference-target :_i)
+      (ds/categorical->number [:_i])
+      )
+
+  )
+
+^kind/dataset-grid
+blob
 
 (def trained-model
   (ml/train blob
             {:model-type
              :smile.classification/decision-tree}))
 
-(def trained-random
-  (ml/train blob
-            {:model-type
-             :smile.classification/random-forest}))
+ ;; (def trained-random
+ ;;   (ml/train blob
+ ;;             {:model-type
+ ;;              :smile.classification/random-forest}))
 
 (require '[aerial.hanami.common :as hanami-common]
          '[aerial.hanami.templates :as hanami-templates])
+
+
+(defn column-range [ds column step]
+  (range
+   (apply min  (get ds column ))
+   (apply max  (get ds column))
+   step
+   ))
+
+(def grid
+  (->
+   (tablecloth/dataset
+    {:x (column-range blob :x 0.1)
+     :y (column-range blob :y 0.1)
+     })
+  )
+
+  )
+
+(def prediction-grid
+  (->
+   (ml/predict grid trained-model)
+   (tablecloth/select-columns :_i)
+   (ds-mod/column-values->categorical :_i)
+   )
+
+  )
+
+(def grid-with-preds
+  (tablecloth/add-or-replace-column grid :i prediction-grid))
+
+^kind/dataset-grid
+grid-with-preds
+
+
+
+
+
 
 ;; (defn- train
 ;;   [feature-ds label-ds options]
