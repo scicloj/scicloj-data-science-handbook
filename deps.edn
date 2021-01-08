@@ -10,10 +10,11 @@
   aerial.hanami/aerial.hanami {:mvn/version "0.12.4"}
   generateme/fastmath         {:mvn/version "2.0.5"}
   techascent/tech.viz         {:mvn/version "0.4.3"}
-  techascent/tech.ml          {:mvn/version "5.00-beta-12"}
-  applied-science/darkstar {:git/url "https://github.com/applied-science/darkstar/"
+;;  techascent/tech.ml          {:mvn/version "5.00-beta-12"}
+  applied-science/darkstar {:git/url "https://github.com/applied-science/darkstar"
                             :sha "541a3ff36065c59e92fe6aa61e41a4385ba6f893"}
   batik-rasterize/batik-rasterize {:mvn/version "0.1.2"}
+  techascent/tech.ml {:mvn/version "5.00-beta-13-SNAPSHOT"}
   }
 
  :aliases
