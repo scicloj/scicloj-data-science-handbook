@@ -130,14 +130,23 @@ blob
    step
    ))
 
-(def grid
-  (->
-   (tablecloth/dataset
-    {:x (column-range blob :x 0.1)
-     :y (column-range blob :y 0.1)
-     })
-  )
 
+
+(def grid
+
+  (for [x (column-range blob :x 0.1)
+        y (column-range blob :y 0.4)
+        ]
+    {:x x :y y}
+
+    ))
+
+(def grid
+  (tablecloth/dataset
+   {:x (map :x grid)
+    :y (map :y grid)
+    }
+   )
   )
 
 (def prediction-grid
@@ -156,7 +165,11 @@ blob
 grid-with-preds
 
 
-
+^kind/vega
+(viz/scatterplot (tablecloth/rows grid-with-preds :as-maps)
+                 :x
+                 :y
+                 {:label-key :i})
 
 
 
