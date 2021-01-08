@@ -13,14 +13,14 @@
          '[tablecloth.api :as tablecloth])
 
 (comment
-  ;; Manually start an empty notespace
-  (notespace/init-with-browser)
-  ;; Renders the notes and listens to file changes
-  (notespace/listen)
-  ;; Clear an existing notespace browser
-  (notespace/init)
-  ;; Evaluating a whole notespace
-  (notespace/eval-this-notespace))
+ ;; Manually start an empty notespace
+ (notespace/init-with-browser)
+ ;; Renders the notes and listens to file changes
+ (notespace/listen)
+ ;; Clear an existing notespace browser
+ (notespace/init)
+ ;; Evaluating a whole notespace
+ (notespace/eval-this-notespace))
 
 ["Trying to mimic the make-blob function of sklearn (not sure about its implementation at the moment):"]
 
@@ -79,144 +79,79 @@
          '[tech.v3.libs.smile.classification]
          '[tech.v3.libs.smile.regression]
          '[tech.v3.dataset.modelling :as ds-mod]
-         '[tech.v3.dataset :as ds]
-         )
+         '[tech.v3.dataset :as ds])
 
 
 (def blob
   (-> (random/rng :isaac 1123)
-      (make-blob 300 4 1)
-      ))
+      (make-blob 300 4 1)))
 
 
 (def blob
   (-> blob
       (ds/add-column
-       (->
-        (ds/new-column  :_i (map #(str "_" %)
-                                 (blob :i))
-                        {:categorical? true}
-                        )
-        )
-       )
+       (-> (ds/new-column :_i
+                          (map #(str "_" %) (blob :i))
+                          {:categorical? true})))
       (tablecloth/drop-columns :i)
       (ds-mod/set-inference-target :_i)
-      (ds/categorical->number [:_i])
-      )
+      (ds/categorical->number [:_i])))
 
-  )
 
-^kind/dataset-grid
-blob
+^kind/dataset-grid blob
 
 (def trained-model
   (ml/train blob
             {:model-type
              :smile.classification/decision-tree}))
 
- ;; (def trained-random
- ;;   (ml/train blob
- ;;             {:model-type
- ;;              :smile.classification/random-forest}))
+;; (def trained-random
+;;   (ml/train blob
+;;             {:model-type
+;;              :smile.classification/random-forest}))
+
+
+
+
+(defn column-range
+  [ds column step]
+  (range (apply min (get ds column))
+         (apply max (get ds column))
+         step))
+
+(def grid
+  (-> (tablecloth/dataset {:x (column-range blob :x 0.1)
+                           :y (column-range blob :y 0.1)})))
+
+(def prediction-grid
+  (-> (ml/predict grid trained-model)
+      (tablecloth/select-columns :_i)
+      (ds-mod/column-values->categorical :_i)))
+
+(def grid-with-preds
+  (tablecloth/add-or-replace-column grid
+                                    :i
+                                    prediction-grid))
+
+^kind/dataset-grid grid-with-preds
 
 (require '[aerial.hanami.common :as hanami-common]
          '[aerial.hanami.templates :as hanami-templates])
 
+(defn hanami-plot
+  "Syntactic sugar for hanami plots, lets you pipe data directly in a thread first macro"
+  [data template & substitutions]
+  (apply hanami-common/xform
+         template
+         :DATA
+         data
+         substitutions))
 
-(defn column-range [ds column step]
-  (range
-   (apply min  (get ds column ))
-   (apply max  (get ds column))
-   step
-   ))
-
-(def grid
-  (->
-   (tablecloth/dataset
-    {:x (column-range blob :x 0.1)
-     :y (column-range blob :y 0.1)
-     })
-  )
-
-  )
-
-(def prediction-grid
-  (->
-   (ml/predict grid trained-model)
-   (tablecloth/select-columns :_i)
-   (ds-mod/column-values->categorical :_i)
-   )
-
-  )
-
-(def grid-with-preds
-  (tablecloth/add-or-replace-column grid :i prediction-grid))
-
-^kind/dataset-grid
-grid-with-preds
+^kind/vega
+(-> grid-with-preds
+    (tablecloth/rows :as-maps)
+    (hanami-plot hanami-templates/point-chart))
 
 
 
 
-
-
-;; (defn- train
-;;   [feature-ds label-ds options]
-;;   (let [entry-metadata (model-type->classification-model
-;;                         (model/options->model-type
-;;                         options))
-;;         target-colname (first (ds/column-names
-;;         label-ds))
-;;         feature-colnames (ds/column-names feature-ds)
-;;         formula (smile-proto/make-formula
-;;         (ds-utils/column-safe-name target-colname)
-;;                                           (map
-;;                                           ds-utils/column-safe-name
-;;                                                feature-colnames))
-;;         dataset (merge feature-ds
-;;                        (ds/update-columnwise
-;;                         label-ds :all
-;;                         dtype/elemwise-cast :int32))
-;;         data (smile-data/dataset->smile-dataframe
-;;         dataset)
-;;         properties (smile-proto/options->properties
-;;         entry-metadata dataset options)
-;;         ctor (:constructor entry-metadata)
-;;         model (ctor formula data properties)]
-;;     (model/model->byte-array model)))
-
-
-;;    :decision-tree
-;;    {:name :decision-tree
-;;     :options [{:name :max-nodes
-;;                :type :int32
-;;                :default 100}
-;;               {:name :node-size
-;;                :type :int32
-;;                :default 1}
-;;               {:name :max-depth
-;;                :type :int32
-;;                :default 20}
-;;               {:name :split-rule
-;;                :type :string
-;;                :lookup-table split-rule-lookup-table
-;;                :default :gini}]
-;;     :gridsearch-options {:max-nodes (ml-gs/linear 10
-;;     1000
-;;     30)
-;;                          :node-size (ml-gs/linear 1 20
-;;                          20)
-;;                          :max-depth (ml-gs/linear 1 50
-;;                          20
-;;                          )
-;;                          :split-rule (ml-gs/categorical
-;;                          [:gini :entropy
-;;                          :classification-error] )
-
-;;                          }
-;;     :property-name-stem "smile.cart"
-;;     :constructor #(DecisionTree/fit ^Formula %1
-;;     ^DataFrame %2  ^Properties %3)
-;;     :predictor tuple-predict-posterior
-
-;;     }
