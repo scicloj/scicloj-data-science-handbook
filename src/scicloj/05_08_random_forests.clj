@@ -10,7 +10,9 @@
          '[tech.v3.datatype.functional :as dtype-fun :refer
            [+ - * /]]
          '[tech.viz.vega :as viz]
-         '[tablecloth.api :as tablecloth])
+         '[tablecloth.api :as tablecloth]
+         '[aerial.hanami.common :as hanami-common]
+         '[aerial.hanami.templates :as hanami-templates])
 
 (comment
  ;; Manually start an empty notespaceff
@@ -32,9 +34,15 @@
       (* 20)
       (- 10)))
 
+(-> (random/rng :isaac 1337)
+    (random-center))
+
 (defn random-point
   [rng]
   (repeatedly 2 #(random/grandom rng)))
+
+(-> (random/rng :isaac 1337)
+    (random-point))
 
 (defn random-points-around-center
   [rng n-samples center std]
@@ -44,10 +52,19 @@
       (+ (tensor/broadcast center [n-samples 2]))))
 
 (let [rng    (random/rng :isaac 1337)
+      center [30 -40]
+      n-samples 100
+      std 10]
+  (-> (repeatedly n-samples #(random-point rng))
+      tensor/->tensor
+      (* std)
+      (+ (tensor/broadcast center [n-samples 2]))))
+
+(let [rng    (random/rng :isaac 1337)
       center [30 -40]]
   [center (random-points-around-center rng 12 center 3)])
 
-(defn make-blob
+(defn make-blob ; mimicking the python make_blob function
   [rng n-smaples n-centers std]
   (->> #(random-center rng)
        (repeatedly n-centers)
@@ -65,15 +82,17 @@
               (tablecloth/add-or-replace-column :i i))))
        (apply tablecloth/concat)))
 
+
+
 (let [rng (random/rng :isaac 1337)] (make-blob rng 10 2 1))
 
 ^kind/vega
-(let [rng  (random/rng :isaac 1123)
-      data (make-blob rng 300 4 1)]
-  (viz/scatterplot (tablecloth/rows data :as-maps)
-                   :x
-                   :y
-                   {:label-key :i}))
+(-> (random/rng :isaac 1123)
+    (make-blob 300 4 1)
+    (tablecloth/rows :as-maps)
+    (viz/scatterplot :x
+                     :y
+                     {:label-key :i}))
 
 (require '[tech.v3.ml :as ml]
          '[tech.v3.libs.smile.classification]
@@ -81,27 +100,43 @@
          '[tech.v3.dataset.modelling :as ds-mod]
          '[tech.v3.dataset :as ds])
 
-
-(def blob
+(def original-dataset
   (-> (random/rng :isaac 1123)
       (make-blob 300 4 1)))
 
+^kind/dataset
+original-dataset
 
-(def blob
-  (-> blob
+(def original-data
+  (-> original-dataset
+      (tablecloth/rows :as-maps)))
+
+^kind/vega
+(-> original-data
+    (viz/scatterplot
+     :x :y
+     {:label-key :i}))
+
+^kind/vega
+(hanami-common/xform hanami-templates/point-chart
+                     :DATA original-data
+                     :COLOR {:field :i :type "nominal"})
+
+(def prepared-data
+  (-> original-dataset
       (ds/add-column
        (-> (ds/new-column :_i
-                          (map #(str "_" %) (blob :i))
+                          (map #(str "_" %) (original-dataset :i))
                           {:categorical? true})))
-      (tablecloth/drop-columns :i)
-      (ds-mod/set-inference-target :_i)
-      (ds/categorical->number [:_i])))
+      (tablecloth/drop-columns [:i])
+      (ds/rename-columns {:_i :i})
+      (ds-mod/set-inference-target :i)
+      (ds/categorical->number [:i])))
 
-
-^kind/dataset-grid blob
+^kind/dataset-grid prepared-data
 
 (def trained-model
-  (ml/train blob
+  (ml/train prepared-data
             {:model-type
              :smile.classification/decision-tree}))
 
@@ -110,39 +145,25 @@
 ;;             {:model-type
 ;;              :smile.classification/random-forest}))
 
-
-
 (defn column-range
   [ds column step]
   (range (apply min (get ds column))
          (apply max (get ds column))
          step))
 
-;; (def grid
-;;   (-> (tablecloth/dataset {:x (column-range blob :x 0.1)
-;;                            :y (column-range blob :y
-;;                            0.1)})))
-;; (def grid
-;;   (-> (for [x (column-range blob :x 0.1)
-;;             y (column-range blob :y 0.1)]
-;;         {:x x :y y})))
-
-
-(def grid
-  (for [x (column-range blob :x 0.1)
-        y (column-range blob :y 0.4)]
+(def grid-maps
+  (for [x (column-range original-dataset :x 0.1)
+        y (column-range original-dataset :y 0.4)]
     {:x x :y y}))
 
 (def grid
-  (tablecloth/dataset {:x (map :x grid) :y (map :y grid)}))
-
-
-
+  (tablecloth/dataset {:x (map :x grid-maps)
+                       :y (map :y grid-maps)}))
 
 (def prediction-grid
   (-> (ml/predict grid trained-model)
-      (tablecloth/select-columns :_i)
-      (ds-mod/column-values->categorical :_i)))
+      (tablecloth/select-columns :i)
+      (ds-mod/column-values->categorical :i)))
 
 (def grid-with-preds
   (tablecloth/add-or-replace-column grid
@@ -152,23 +173,23 @@
 ^kind/dataset-grid grid-with-preds
 
 
+(def grid-with-preds-data
+  (tablecloth/rows grid-with-preds :as-maps))
+
 ^kind/vega
-(viz/scatterplot (tablecloth/rows grid-with-preds :as-maps)
+(viz/scatterplot grid-with-preds-data
                  :x
                  :y
                  {:label-key :i})
 
 
-(require '[aerial.hanami.common :as hanami-common]
-         '[aerial.hanami.templates :as hanami-templates])
-
 (defn hanami-plot
   "Syntactic sugar for hanami plots, lets you pipe data directly in a thread first macro"
-  [data template & substitutions]
+  [dataset template & substitutions]
   (apply hanami-common/xform
          template
          :DATA
-         (tablecloth/rows data :as-maps)
+         (tablecloth/rows dataset :as-maps)
          substitutions))
 
 ^kind/vega
@@ -179,11 +200,6 @@
     ;; add original categories as a layer
     (assoc :mark {:type "square" :size 40}))
 
-["Data"]
-^kind/vega
-(hanami-common/xform hanami-templates/point-chart
-                     :DATA (tablecloth/rows blob :as-maps)
-                     :COLOR "i")
 
 ^kind/vega
 (hanami-common/xform hanami-templates/layer-chart
@@ -192,9 +208,7 @@
                                               :WIDTH 600
                                               :COLOR {:field :i :type "nominal"})
                                  ;; add original categories as a layer
-                                 (assoc :mark {:type "square" :size 40})
-                                 )
-                             (hanami-common/xform hanami-templates/point-chart
-                                                  :DATA (tablecloth/rows blob :as-maps)
-                                                  :COLOR "_i")]
-                     )
+                                 (assoc :mark {:type "square" :size 40}))
+                             (-> original-dataset
+                                 (hanami-plot hanami-templates/point-chart
+                                              :COLOR {:field :i :type "nominal"}))])
