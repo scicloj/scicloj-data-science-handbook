@@ -13,7 +13,7 @@
          '[tablecloth.api :as tablecloth])
 
 (comment
- ;; Manually start an empty notespace
+ ;; Manually start an empty notespaceff
  (notespace/init-with-browser)
  ;; Renders the notes and listens to file changes
  (notespace/listen)
@@ -119,9 +119,17 @@
          (apply max (get ds column))
          step))
 
+;; (def grid
+;;   (-> (tablecloth/dataset {:x (column-range blob :x 0.1)
+;;                            :y (column-range blob :y
+;;                            0.1)})))
 (def grid
-  (-> (tablecloth/dataset {:x (column-range blob :x 0.1)
-                           :y (column-range blob :y 0.1)})))
+  (-> (for [x (column-range blob :x 0.1)
+            y (column-range blob :y 0.1)]
+        {:x x :y y})))
+
+
+
 
 (def prediction-grid
   (-> (ml/predict grid trained-model)
@@ -144,13 +152,15 @@
   (apply hanami-common/xform
          template
          :DATA
-         data
+         (tablecloth/rows data :as-maps)
          substitutions))
 
 ^kind/vega
 (-> grid-with-preds
-    (tablecloth/rows :as-maps)
-    (hanami-plot hanami-templates/point-chart))
+    (hanami-plot hanami-templates/point-chart
+                 :COLOR
+                 {:field :i :type "nominal"})
+    (assoc :mark {:type "square" :size 12}))
 
 
 
