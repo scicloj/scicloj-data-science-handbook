@@ -177,7 +177,7 @@
                  :WIDTH 600
                  :COLOR {:field :i :type "nominal"})
     ; add original categories as a layer
-    (assoc :mark {:type "square" :size 20}))
+    (assoc :mark {:type "square" :size 40}))
 
 
 
