@@ -112,22 +112,41 @@
 
 
 
-
 (defn column-range
   [ds column step]
   (range (apply min (get ds column))
          (apply max (get ds column))
          step))
 
+<<<<<<< HEAD
 ;; (def grid
 ;;   (-> (tablecloth/dataset {:x (column-range blob :x 0.1)
 ;;                            :y (column-range blob :y
 ;;                            0.1)})))
-(def grid
-  (-> (for [x (column-range blob :x 0.1)
-            y (column-range blob :y 0.1)]
-        {:x x :y y})))
+;; (def grid
+;;   (-> (for [x (column-range blob :x 0.1)
+;;             y (column-range blob :y 0.1)]
+;;         {:x x :y y})))
 
+=======
+
+(def grid
+
+  (for [x (column-range blob :x 0.1)
+        y (column-range blob :y 0.4)
+        ]
+    {:x x :y y}
+
+    ))
+
+(def grid
+  (tablecloth/dataset
+   {:x (map :x grid)
+    :y (map :y grid)
+    }
+   )
+  )
+>>>>>>> 7e6f495fb5c7b4da065be36640387bb0b4606d7e
 
 
 
@@ -137,11 +156,18 @@
       (ds-mod/column-values->categorical :_i)))
 
 (def grid-with-preds
-  (tablecloth/add-or-replace-column grid
-                                    :i
-                                    prediction-grid))
+  (tablecloth/add-or-replace-column grid :i prediction-grid))
 
-^kind/dataset-grid grid-with-preds
+^kind/dataset-grid
+grid-with-preds
+
+
+^kind/vega
+(viz/scatterplot (tablecloth/rows grid-with-preds :as-maps)
+                 :x
+                 :y
+                 {:label-key :i})
+
 
 (require '[aerial.hanami.common :as hanami-common]
          '[aerial.hanami.templates :as hanami-templates])
