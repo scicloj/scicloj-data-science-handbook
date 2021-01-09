@@ -174,9 +174,10 @@
 ^kind/vega
 (-> grid-with-preds
     (hanami-plot hanami-templates/point-chart
-                 :COLOR
-                 {:field :i :type "nominal"})
-    (assoc :mark {:type "square" :size 12}))
+                 :WIDTH 600
+                 :COLOR {:field :i :type "nominal"})
+    ; add original categories as a layer
+    (assoc :mark {:type "square" :size 20}))
 
 
 
