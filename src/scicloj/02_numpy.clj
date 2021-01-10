@@ -14,17 +14,12 @@
   (notespace.api/unlisten)
   nil)
 
-^k/hidden
-(defn ravel [t]
-  (let [dt    (dtype/get-datatype t)
-        shape (dtype/shape t)
-        idx'  (index shape)]
-    (-> (dtype/make-reader dt (apply * shape) (apply dtt/mget t (nth idx' idx)))
-        (dtt/->tensor))))
+
 
 ["
-Python Data Science - ch.2. NumPy translated to Clojure
+[Python Data Science - ch.2. NumPy translated to Clojure](https://jakevdp.github.io/PythonDataScienceHandbook/02.06-boolean-arrays-and-masks.html)
 =======================================================
+
 "]
 
 ["Understanding Data Types in Python
@@ -40,6 +35,16 @@ for working efficiently with dataset data."]
  '[tech.v3.datatype :as dtype]
  '[tech.v3.tensor :as dtt]
  '[tablecloth.api :as api])
+
+^k/hidden
+(declare index)
+^k/hidden
+(defn ravel
+  "See `numpy.ravel`"
+  [t]
+  (let [shape (dtype/shape (dtt/->tensor t))
+        ix    (index shape)]
+    (dtype/make-reader :object (apply * shape) (apply dtt/mget t (nth ix idx)))))
 
 ["### Creating Arrays from ~Python~ Lists
 
@@ -177,22 +182,25 @@ it is easy enough to compute an identity matrix using an outer product operation
 
 (index [3 3])
 
-(defn outer-product [f a b]
-  (let [final-shape (concat (dtype/shape a) (dtype/shape b))
-        size        (apply * final-shape)
-        index-a     (index (dtype/shape a))
-        index-b     (index (dtype/shape b))
-        indexes     (for [a index-a
-                          b index-b]
-                      [a b])]
-    (-> (dtype/make-reader
+(defn outer-product
+  ;; Author: Chris Nuernberger
+  ;; https://github.com/scicloj/scicloj-data-science-handbook/pull/2#discussion_r548033202
+  [f a b]
+  (let [a-shape (dtype/shape a)
+        b-shape (dtype/shape b)
+        a-rdr   (dtype/->reader a)
+        b-rdr   (dtype/->reader b)
+        n-b     (.lsize b-rdr)
+        n-elems (* (.lsize a-rdr) n-b)]
+    ;;Doing the cartesian join is easier in linear space
+    (-> (dtype/emap
+         (fn [^long idx]
+           (let [a-idx (quot idx n-b)
+                 b-idx (rem idx n-b)]
+             (f (a-rdr a-idx) (b-rdr b-idx))))
          :object
-         size
-         (let [[a' b'] (nth indexes idx)]
-           (f (apply dtt/mget a a')
-              (apply dtt/mget b b'))))
-        (dtt/->tensor)
-        (dtt/reshape final-shape))))
+         (range n-elems))
+        (dtt/reshape (concat a-shape b-shape)))))
 
 (defn eye [n]
   (letfn [(= [a b] (if (clojure.core/= a b) 1 0))]
@@ -430,9 +438,7 @@ The opposite of concatenation is splitting, which is implemented by the function
         n   (first (dtype/shape t))]
     (tech.v3.datatype.functional//
      (tech.v3.datatype.functional/- t min)
-     (tech.v3.datatype.functional/- max min))
-    )
-  )
+     (tech.v3.datatype.functional/- max min))))
 
 (normalize t)
 
@@ -612,12 +618,38 @@ More information on universal functions (including the full list of available fu
 `np.sum(L)`"]
 
 
+#_(defn ^:private reduce-axis
+    ;; [WIP] dimensionality issue that doesn't conform to APL standard -- ultimately 
+    ;; this is the more performant version
+    "Author: Chris Nuernberger
+  
+  https://github.com/scicloj/scicloj-data-science-handbook/pull/2#discussion_r547591691"
+  ([reduce-fn tensor]
+   (reduce-axis reduce-fn tensor (-> tensor rank first dec)))
+  ([reduce-fn tensor axis]
+   (let [axis         (or axis (-> tensor rank first dec))
+         rank         (count (dtype/shape tensor))
+         dec-rank     (dec rank)
+         axis         (if (>= axis 0)
+                        axis
+                        (+ rank axis))
+         shape-idxes  (remove #(= axis %) (range rank))
+         ;;transpose the tensor so the reduction axis is the last one
+         tensor       (if-not (= dec-rank axis)
+                        (dtt/transpose tensor (concat shape-idxes [axis]))
+                        tensor)
+         ;;slice to produce n sequence of data
+         slices       (dtt/slice tensor dec-rank)
+         result-shape (mapv (dtype/shape tensor) shape-idxes)]
+     (-> (dtype/emap reduce-fn
+                     :object
+                     slices)
+         ;;reshape to the result shape
+         (dtt/reshape result-shape)))))
+
 (defn ndreduce
   ([f t] (ndreduce (dec (count (dtype/shape t))) f t))
   ([axis f t]
-   (def axis axis)
-   (def f f)
-   (def t t)
    (let [
          shape            (dtype/shape t)
          select-shape     (map-indexed (fn [i x]
@@ -649,7 +681,23 @@ More information on universal functions (including the full list of available fu
                      :else      (nth idx (dec i))))
              (range (count select-shape))))))))
 
-(def m t)
+#_(defn nd-reduce
+    ;; for when reduce-axis is brought online
+    ([f t]
+     (ndreduce  f t (-> t rank first dec)))
+  ([axis f t]
+   (reduce-axis (partial reduce f) t axis)))
+
+#_(defn nd-aggregate
+  ;; for when reduce-axis is brought online
+  ([f t]
+   (nd-aggregate (-> t rank first dec) f t))
+  ([axis f t]
+   (reduce-axis f t (or axis (-> t rank first dec)))))
+
+(defn nd-reduce
+  ([f t] (ndreduce f t 0))
+  ([axis f t] (ndreduce axis f t)))
 
 ["Example of reducing along the 0th dimension"]
 
@@ -671,6 +719,7 @@ More information on universal functions (including the full list of available fu
 
 Our version:"]
 
+(def m t)
 m
 
 
@@ -688,18 +737,23 @@ m
 
 ```
 
-Which is equivalent to: "]
+Which is equivalent let: "]
 (let [f +] 
   (dtt/->tensor 
-   [[(f (dtt/mget t 0 0 0) (dtt/mget t 1 0 0)) (f (dtt/mget t 0 0 1) (dtt/mget t 1 0 1)) (f (dtt/mget t 0 0 2) (dtt/mget t 1 0 2)) (f (dtt/mget t 0 0 3) (dtt/mget t 1 0 3)) (f (dtt/mget t 0 0 4) (dtt/mget t 1 0 4)) ]
-    [(f (dtt/mget t 0 1 0) (dtt/mget t 1 1 0)) (f (dtt/mget t 0 1 1) (dtt/mget t 1 1 1)) (f (dtt/mget t 0 1 2) (dtt/mget t 1 1 2)) (f (dtt/mget t 0 1 3) (dtt/mget t 1 1 3)) (f (dtt/mget t 0 1 4) (dtt/mget t 1 1 4)) ]
-    [(f (dtt/mget t 0 2 0) (dtt/mget t 1 2 0)) (f (dtt/mget t 0 2 1) (dtt/mget t 1 2 1)) (f (dtt/mget t 0 2 2) (dtt/mget t 1 2 2)) (f (dtt/mget t 0 2 3) (dtt/mget t 1 2 3)) (f (dtt/mget t 0 2 4) (dtt/mget t 1 2 4)) ]]))
+   [[(f (dtt/mget m 0 0 0) (dtt/mget m 1 0 0)) (f (dtt/mget m 0 0 1) (dtt/mget m 1 0 1)) (f (dtt/mget m 0 0 2) (dtt/mget m 1 0 2)) (f (dtt/mget m 0 0 3) (dtt/mget m 1 0 3)) (f (dtt/mget m 0 0 4) (dtt/mget m 1 0 4)) ]
+    [(f (dtt/mget m 0 1 0) (dtt/mget m 1 1 0)) (f (dtt/mget m 0 1 1) (dtt/mget m 1 1 1)) (f (dtt/mget m 0 1 2) (dtt/mget m 1 1 2)) (f (dtt/mget m 0 1 3) (dtt/mget m 1 1 3)) (f (dtt/mget m 0 1 4) (dtt/mget m 1 1 4)) ]
+    [(f (dtt/mget m 0 2 0) (dtt/mget m 1 2 0)) (f (dtt/mget m 0 2 1) (dtt/mget m 1 2 1)) (f (dtt/mget m 0 2 2) (dtt/mget m 1 2 2)) (f (dtt/mget m 0 2 3) (dtt/mget m 1 2 3)) (f (dtt/mget m 0 2 4) (dtt/mget m 1 2 4)) ]]))
 
 ["Which is equivalent to: "]
 
-(ndreduce 0 + m)
+(nd-reduce 0 + m)
 
+["Note that the initial shape of `m` is `[2 3 5]` and that `(first  m)` is 2.
+Therefore when you reduce along axis 0, you can reason that the output shape will
+be [3 5]."]
 
+(dtype/shape m)
+(dtype/shape (nd-reduce 0 + m))
 
 ["As for reducing along the first dimension: 
 
@@ -715,7 +769,13 @@ APL reference:
 
 Our version: "]
 
-(ndreduce 1 + m)
+(nd-reduce 1 + m)
+
+["Again, the shape of `m` is [2 3 5]`.  The index 1 of the shape of `m` is `3`.  Therefore, 
+when we reduce along the 1 dimension of `m`, we can reason that the output shape will be 
+[2 5]. Observe:"]
+
+(dtype/shape (nd-reduce 1 + m))
 
 ["And finally for reducing along the last dimension:
 
@@ -731,8 +791,12 @@ APL reference:
 
 "]
 
-(ndreduce 2 + m)
+(nd-reduce 2 + m)
 
+["Once more, the shape of `m` is [2 3 5].  Since the 2 dimension is 5, we can
+reason that reducing the 2 dimension will result in an output shape of [2 3]: "]
+
+(dtype/shape (nd-reduce 2 + m))
 
 ;; todo -- multixis reduce
 
@@ -811,55 +875,55 @@ plt.ylabel('number'));
 ["Computation on Arrays: Broadcasting
  ------------------------------------------------"]
 
+(defn broadcast [f t]
+  (dtype/emap f :object t))
+
+(broadcast zero? (eye 5))
+
+
 ["### WIP"]
 
 ["Comparisons, Masks, and Boolean Logic
  ------------------------------------------------"]
 
+(defn mask [f t]
+  (-> (dtype/emap #(if (f %) 1 0) :int32 t)
+      dtt/->tensor
+      ravel))
+
+(mask zero? (eye 5))
+
 ["Fancy Indexing
  ------------------------------------------------"]
+
+
+(defn compress
+  "Use compress to do an elementwise selection according to an interger boolean
+mask. lhs and rhs must have the same element count.  A 0 on the lhs will drop the corresponding
+element on the rhs.  A 1 on the rhs will keep the element. 2 or great will cause replication
+of the element on the rhs. Returns a tensor of rank 1."
+  [lhs rhs]
+  (let [rhs   (dtt/->tensor rhs)
+        rhr   (dtt/->tensor (ravel rhs))
+        dt    (dtype/get-datatype rhs)
+        shape (dtype/shape lhs)
+        idx'  (into []
+                    (comp
+                     (partition-all 2)
+                     (map #(repeat (first %) (second %)))
+                     cat)
+                    (interleave lhs (index shape)))
+        size  (count idx')]
+    (-> (dtype/make-reader :object size (apply dtt/mget rhr (nth idx' idx)))
+        (dtt/->tensor))))
+
+(compress [0 0 1 0 2] [1 1 2 3 4])
+
 
 ["Sorting Arrays
  ------------------------------------------------"]
 
+
+
 ["Structured Data: NumPy's Structured Arrays
   ------------------------------------------------"]
-
-
-
-;; WIP
-
-;; (defn ravel [t]
-;;   (let [dt    (dtype/get-datatype t)
-;;         shape (dtype/shape t)
-;;         idx'  (index shape)]
-;;     (-> (dtype/make-reader dt (apply * shape) (apply dtt/mget t (nth idx' idx)))
-;;         (dtt/->tensor))))
-
-;; (dtype/shape x)
-;; (index (dtype/shape x))
-;; (ravel x)
-
-;; (defn mask [f t]
-;;   (-> (dtype/emap #(if (f %) 1 0) :int32 t)
-;;       dtt/->tensor
-;;       ravel))
-
-;; (mask #(= 1 %) x)
-
-;; (defn compress [lhs rhs]
-;;   (let [lhr   (ravel lhs)
-;;         rhr   (ravel rhs)
-;;         dt    (dtype/get-datatype rhs)
-;;         shape (dtype/shape lhs)
-;;         idx'  (into []
-;;                     (comp
-;;                      (partition-all 2)
-;;                      (map #(repeat (first %) (second %)))
-;;                      cat)
-;;                     (interleave (ravel lhs) (index shape)))
-;;         size  (count idx')]
-;;     (-> (dtype/make-reader dt size (apply dtt/mget rhr (nth idx' idx)))
-;;         (dtt/->tensor))))
-
-;; (compress (mask (partial = 1) x) x)
