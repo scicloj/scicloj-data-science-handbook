@@ -107,27 +107,24 @@
 ^kind/dataset
 original-dataset
 
-(def original-data
-  (-> original-dataset
-      (tablecloth/rows :as-maps)))
-
 ^kind/vega
-(-> original-data
+(-> original-dataset
+    (tablecloth/rows :as-maps)
     (viz/scatterplot
-     :x :y
-     {:label-key :i}))
+      :x :y
+      {:label-key :i}))
 
 ^kind/vega
 (hanami-common/xform hanami-templates/point-chart
-                     :DATA original-data
+                     :DATA (tablecloth/rows original-dataset :as-maps)
                      :COLOR {:field :i :type "nominal"})
 
 (def prepared-data
   (-> original-dataset
       (ds/add-column
-       (-> (ds/new-column :_i
-                          (map #(str "_" %) (original-dataset :i))
-                          {:categorical? true})))
+        (ds/new-column :_i
+                       (map #(str "_" %) (original-dataset :i))
+                       {:categorical? true}))
       (tablecloth/drop-columns [:i])
       (ds/rename-columns {:_i :i})
       (ds-mod/set-inference-target :i)
