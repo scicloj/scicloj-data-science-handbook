@@ -1,7 +1,8 @@
 (ns scicloj.02-numpy
-  (:require [notespace.api]
-            [notespace.kinds :as k]
-            [notespace.state :as state]))
+  (:require
+    [notespace.api]
+    [notespace.kinds :as k]
+    [notespace.state :as state]))
 
 ^k/hidden
 (comment
@@ -42,9 +43,7 @@ for working efficiently with dataset data."]
 (defn ravel
   "See `numpy.ravel`"
   [t]
-  (let [shape (dtype/shape (dtt/->tensor t))
-        ix    (index shape)]
-    (dtype/make-reader :object (apply * shape) (apply dtt/mget t (nth ix idx)))))
+  (dtype/->reader t))
 
 ["### Creating Arrays from ~Python~ Lists
 
@@ -163,22 +162,60 @@ np.eye(3)
 ["We currently do not have a good approximation of this technique.  However,
 it is easy enough to compute an identity matrix using an outer product operation."]
 
-(defn index
+(defn ^:private slow-index
   "Like range, but for tensors.  Enumerates the indicies."
   [shape]
   (let [space  (apply * shape)
         rshape (reverse shape)
         muls   (cons 1 (pop (vec (reductions * rshape))))]
-    (map
-     (fn [idx]
-       (reverse
-        (map (fn [p n]
-               (-> idx
-                   (quot n)
-                   (mod p)))
-             rshape
-             muls)))
-     (range space))))
+    (-> (mapv
+         (fn [idx]
+           (vec 
+            (reverse
+             (map (fn [p n]
+                    (-> idx
+                        (quot n)
+                        (mod p)))
+                  rshape
+                  muls))))
+         (range space))
+        dtype/->reader)))
+
+(defn index [args]
+  (if-let [f (and (< (count args) 15)
+                  (case (count args)
+                    0 nil
+                    1 (fn [a] [a])
+                    2 (fn [a b] [a b])
+                    3 (fn [a b c]
+                        [a b c])
+                    4 (fn [a b c d]
+                        [a b c d])
+                    5 (fn [a b c d e]
+                        [a b c d e])
+                    6 (fn [a b c d e f]
+                        [a b c d e f])
+                    7 (fn [a b c d e f g]
+                        [a b c d e f g])
+                    8 (fn [a b c d e f g h]
+                        [a b c d e f g h])
+                    9 (fn [a b c d e f g h i]
+                        [a b c d e f g h i])
+                    10 (fn [a b c d e f g h i j]
+                         [a b c d e f g h i j])
+                    11 (fn [a b c d e f g h i j k]
+                         [a b c d e f g h i j k])
+                    12 (fn [a b c d e f g h i j k l]
+                         [a b c d e f g h i j k l])
+                    13 (fn [a b c d e f g h i j k l m]
+                         [a b c d e f g h i j k l m])
+                    14 (fn [a b c d e f g h i j k l m n]
+                         [a b c d e f g h i j k l m n])
+                    15 (fn [a b c d e f g h i j k l m n o]
+                         [a b c d e f g h i j k l m n o])))]
+    (-> (dtt/compute-tensor (vec args) f)
+        dtype/->reader))
+  (slow-index (vec args)))
 
 (index [3 3])
 
@@ -371,41 +408,39 @@ All of the preceding routines worked on single arrays. It's also possible to com
 
 NumPy: `np.concatenate, np.vstack, and np.hstack`"]
 
-
-(defn rank [t] (dec (count (dtype/shape t))))
+(defn scalar-rank [t] (-> t dtype/shape dtype/shape first))
 
 (defn concatenate
-  ([a b] (concatenate (rank a) a b))
-  ([r a b]
+  ([a b] (concatenate (dec (scalar-rank a)) a b))
+  ([axis a b]
    (let [left-shape        (dtype/shape a)
          right-shape       (dtype/shape b)
-         left-join-rank    (nth (dtype/shape a) r)
-         right-join-rank   (nth (dtype/shape b) r)
-         left-cross-shape  (map-indexed (fn [i c] (if (= i r) nil (range c)))
+         left-join-rank    (nth (dtype/shape a) axis)
+         right-join-rank   (nth (dtype/shape b) axis)
+         left-cross-shape  (map-indexed (fn [i c] (if (= i axis) nil (range c)))
                                         (dtype/shape a))
-         right-cross-shape (map-indexed (fn [i c] (if (= i r) nil (range c)))
+         right-cross-shape (map-indexed (fn [i c] (if (= i axis) nil (range c)))
                                         (dtype/shape b))
          left-cross        (filter some? left-cross-shape)
          right-cross       (filter some? right-cross-shape)
          crosses           (map dtt/->tensor (interleave left-cross right-cross))
          final-shape       (map-indexed
                             (fn [i d]
-                              (if (= i r) (+ left-join-rank right-join-rank) d))
+                              (if (= i axis) (+ left-join-rank right-join-rank) d))
                             left-shape)
          idx'              (dtype/emap
                             (fn [idx]
-                              (let [special-rank  (nth idx r)
+                              (let [special-rank  (nth idx axis)
                                     target-tensor (if (< special-rank left-join-rank) a b)
                                     special-idx   (if (< special-rank left-join-rank)
                                                     special-rank
                                                     (- special-rank left-join-rank))
                                     target-coords
-                                    (map-indexed (fn [i d] (if (= i r) special-idx d)) idx)]
+                                    (map-indexed (fn [i d] (if (= i axis) special-idx d)) idx)]
                                 (apply dtt/mget target-tensor target-coords)))
                             :object
                             (dtype/->reader (vec (index final-shape))))]
      (dtt/reshape idx' final-shape))))
-
 
 (def t23 (dtt/->tensor [[1 2 3] [4 5 6]]))
 (def t22 (dtt/->tensor [["a" "b"] ["c" "d"]]))
@@ -413,6 +448,7 @@ NumPy: `np.concatenate, np.vstack, and np.hstack`"]
 (dtt/->tensor [(concat (dtype/->reader (select t23 [0] nil)) (dtype/->reader (select t22 [0] nil)))
                (concat (dtype/->reader (select t23 [1] nil)) (dtype/->reader (select t22 [1] nil)))])
 
+(nth (dtype/shape t23) (dec 2))
 (concatenate t23 t22)
 
 (-> (concatenate 0 t23 t23)
@@ -456,8 +492,7 @@ The opposite of concatenation is splitting, which is implemented by the function
                           :object
                           (if-let [v (and  (vector? pieces)
                                            (-> (normalize (dtt/reshape (dtt/->tensor pieces)
-                                                                       [1 (count pieces)]
-                                                                       ))
+                                                                       [1 (count pieces)]))
                                                (dtt/reshape [(count pieces)])))]
                             ;; individual element selection
                             (tech.v3.datatype.functional/* v
@@ -594,7 +629,7 @@ np.multiply.outer(x, x)
 ```"]
 
 (let [x (dtt/->tensor (range 1 6))]
-  (outer-product * x x ))
+  (outer-product * x x))
 
 ["### Ufuncs: Learning More
 
@@ -611,93 +646,46 @@ More information on universal functions (including the full list of available fu
 
 `ds/descriptive-stats` displays these stats: `n-valid`, `n-missing`, `min`, `mean`, `mode`, `max`, `standard-deviation`, `skew`"]
 
+["(Note: Investigate kixi stats and fastmath for this purpose)"]
 ; (ds/descriptive-stats csv-data)
 
 ["### Summing the Values in an Array
-
 `np.sum(L)`"]
 
 
-#_(defn ^:private reduce-axis
-    ;; [WIP] dimensionality issue that doesn't conform to APL standard -- ultimately 
-    ;; this is the more performant version
-    "Author: Chris Nuernberger
-  
-  https://github.com/scicloj/scicloj-data-science-handbook/pull/2#discussion_r547591691"
-  ([reduce-fn tensor]
-   (reduce-axis reduce-fn tensor (-> tensor rank first dec)))
-  ([reduce-fn tensor axis]
-   (let [axis         (or axis (-> tensor rank first dec))
-         rank         (count (dtype/shape tensor))
-         dec-rank     (dec rank)
-         axis         (if (>= axis 0)
-                        axis
-                        (+ rank axis))
-         shape-idxes  (remove #(= axis %) (range rank))
-         ;;transpose the tensor so the reduction axis is the last one
-         tensor       (if-not (= dec-rank axis)
-                        (dtt/transpose tensor (concat shape-idxes [axis]))
-                        tensor)
-         ;;slice to produce n sequence of data
-         slices       (dtt/slice tensor dec-rank)
-         result-shape (mapv (dtype/shape tensor) shape-idxes)]
-     (-> (dtype/emap reduce-fn
-                     :object
-                     slices)
-         ;;reshape to the result shape
-         (dtt/reshape result-shape)))))
-
-(defn ndreduce
-  ([f t] (ndreduce (dec (count (dtype/shape t))) f t))
-  ([axis f t]
-   (let [
-         shape            (dtype/shape t)
-         select-shape     (map-indexed (fn [i x]
-                                         (if  (= i axis)
-                                           nil
-                                           x))
-                                       shape)
-         index-shape      (filter some? select-shape)
-         reduce-dimension (nth shape axis)]
-     (transduce
-      (comp
-       (map (fn [coords] (apply dtt/mget t coords)))
-       (partition-all reduce-dimension)
-       (map (partial apply f))
-            
-       )
-      (fn ([res] res
-           (-> res
-               persistent!
-               (dtt/->tensor)
-               (dtt/reshape index-shape)))
-        ([res next] (conj! res next)))
-      (transient [])
-      (for [idx (index index-shape)
-            a   (range reduce-dimension)]
-        (map (fn [i]
-               (cond (= i axis) a
-                     (< i axis) (nth idx i)
-                     :else      (nth idx (dec i))))
-             (range (count select-shape))))))))
-
-#_(defn nd-reduce
-    ;; for when reduce-axis is brought online
-    ([f t]
-     (ndreduce  f t (-> t rank first dec)))
-  ([axis f t]
-   (reduce-axis (partial reduce f) t axis)))
-
-#_(defn nd-aggregate
-  ;; for when reduce-axis is brought online
-  ([f t]
-   (nd-aggregate (-> t rank first dec) f t))
-  ([axis f t]
-   (reduce-axis f t (or axis (-> t rank first dec)))))
-
 (defn nd-reduce
-  ([f t] (ndreduce f t 0))
-  ([axis f t] (ndreduce axis f t)))
+  "Reduce along an axis with an element-wise reduction."
+  ([f t]
+   (if (= 1 (scalar-rank t))
+     (reduce f t)
+     (dtt/reduce-axis (partial apply f) t 0)))
+  ([axis f t]
+   (if (= 1 (scalar-rank t))
+     (reduce f t)
+     (dtt/reduce-axis  (partial apply f) t axis)))
+  ([axis f t datatype]
+   (if (= 1 (scalar-rank t))
+     (reduce f t)
+     (dtt/reduce-axis (partial apply f) t axis
+                      datatype))))
+
+
+
+(defn nd-aggregate
+  "Like reduce, but the entire dimension is presented to the 
+reducing function for an aggregation (such as `mean`)."
+  ([f t]
+   (if (= 1 (scalar-rank t))
+     (f t)
+     (dtt/reduce-axis f t 0)))
+  ([axis f t]
+   (if (= 1 (scalar-rank t))
+     (f t)
+     (dtt/reduce-axis  f t axis)))
+  ([axis f t datatype]
+   (if (= 1 (scalar-rank t))
+     (f t)
+     (dtt/reduce-axis f t axis datatype))))
 
 ["Example of reducing along the 0th dimension"]
 
@@ -872,16 +860,13 @@ plt.ylabel('number'));
 
 (tech.v3.datatype.functional/mean (dtype/->reader (-> csv-data last last)))
 
+(letfn [(mean [x] (float (/ (apply + x) (count x))))]
+  (nd-aggregate mean
+                (dtype/->reader (-> csv-data last last))))
+
+
 ["Computation on Arrays: Broadcasting
  ------------------------------------------------"]
-
-(defn broadcast [f t]
-  (dtype/emap f :object t))
-
-(broadcast zero? (eye 5))
-
-
-["### WIP"]
 
 ["Comparisons, Masks, and Boolean Logic
  ------------------------------------------------"]
@@ -920,10 +905,14 @@ of the element on the rhs. Returns a tensor of rank 1."
 (compress [0 0 1 0 2] [1 1 2 3 4])
 
 
+["Example: use mask and compress to select all letters at even positions"]
+(let [words "hello there"]
+  (compress
+   (mask even? (dtt/->tensor (range (count words))))
+   (dtt/->tensor (vec words))))
+
 ["Sorting Arrays
  ------------------------------------------------"]
-
-
 
 ["Structured Data: NumPy's Structured Arrays
   ------------------------------------------------"]
