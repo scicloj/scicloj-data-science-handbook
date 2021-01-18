@@ -15,9 +15,12 @@
   (notespace.api/unlisten)
   nil)
 
+
+
 ["
-Python Data Science - ch.2. NumPy translated to Clojure
+[Python Data Science - ch.2. NumPy translated to Clojure](https://jakevdp.github.io/PythonDataScienceHandbook/02.06-boolean-arrays-and-masks.html)
 =======================================================
+
 "]
 
 ["Understanding Data Types in Python
@@ -28,12 +31,19 @@ Python Data Science - ch.2. NumPy translated to Clojure
 In Clojure we use [dtype-next](https://github.com/cnuernber/dtype-next) (also known as
 `tech.v3.datatype`) and the convenient wrapper with a consistent API, [tablecloth](https://scicloj.github.io/tablecloth/),
 for working efficiently with dataset data."]
-
 (require
-  '[tech.v3.dataset :as ds]
-  '[tech.v3.datatype :as dtype]
-  '[tech.v3.tensor :as dtt]
-  '[tablecloth.api :as api])
+ '[tech.v3.dataset :as ds]
+ '[tech.v3.datatype :as dtype]
+ '[tech.v3.tensor :as dtt]
+ '[tablecloth.api :as api])
+
+^k/hidden
+(declare index)
+^k/hidden
+(defn ravel
+  "See `numpy.ravel`"
+  [t]
+  (dtype/->reader t))
 
 ["### Creating Arrays from ~Python~ Lists
 
@@ -111,7 +121,16 @@ np.arange(0, 20, 2)
 np.linspace(0, 1, 5)
 "]
 
-(println "???")
+(defn ^{:doc "Temporary workaround, maybe there is a better way to do this"}
+  linspace
+  ([start stop] (linspace start stop 50))
+  ([start stop n]
+   (let [delta (- stop start)
+         end   (dec n)]
+     (dtt/->tensor (map (fn [i] (/ (* i delta) end))
+                        (range n))))))
+
+(linspace 0 1 5)
 
 ["Create a 3x3 array of uniformly distributed random values between 0 and 1
 ```python
@@ -140,7 +159,94 @@ np.random.randint(0, 10, (3, 3))
 np.eye(3)
 ```"]
 
-;; N/A
+["We currently do not have a good approximation of this technique.  However,
+it is easy enough to compute an identity matrix using an outer product operation."]
+
+(defn ^:private slow-index
+  "Like range, but for tensors.  Enumerates the indicies."
+  [shape]
+  (let [space  (apply * shape)
+        rshape (reverse shape)
+        muls   (cons 1 (pop (vec (reductions * rshape))))]
+    (-> (mapv
+         (fn [idx]
+           (vec 
+            (reverse
+             (map (fn [p n]
+                    (-> idx
+                        (quot n)
+                        (mod p)))
+                  rshape
+                  muls))))
+         (range space))
+        dtype/->reader)))
+
+(defn index [args]
+  (if-let [f (and (< (count args) 15)
+                  (case (count args)
+                    0 nil
+                    1 (fn [a] [a])
+                    2 (fn [a b] [a b])
+                    3 (fn [a b c]
+                        [a b c])
+                    4 (fn [a b c d]
+                        [a b c d])
+                    5 (fn [a b c d e]
+                        [a b c d e])
+                    6 (fn [a b c d e f]
+                        [a b c d e f])
+                    7 (fn [a b c d e f g]
+                        [a b c d e f g])
+                    8 (fn [a b c d e f g h]
+                        [a b c d e f g h])
+                    9 (fn [a b c d e f g h i]
+                        [a b c d e f g h i])
+                    10 (fn [a b c d e f g h i j]
+                         [a b c d e f g h i j])
+                    11 (fn [a b c d e f g h i j k]
+                         [a b c d e f g h i j k])
+                    12 (fn [a b c d e f g h i j k l]
+                         [a b c d e f g h i j k l])
+                    13 (fn [a b c d e f g h i j k l m]
+                         [a b c d e f g h i j k l m])
+                    14 (fn [a b c d e f g h i j k l m n]
+                         [a b c d e f g h i j k l m n])
+                    15 (fn [a b c d e f g h i j k l m n o]
+                         [a b c d e f g h i j k l m n o])))]
+    (-> (dtt/compute-tensor (vec args) f)
+        dtype/->reader))
+  (slow-index (vec args)))
+
+(index [3 3])
+
+(defn outer-product
+  ;; Author: Chris Nuernberger
+  ;; https://github.com/scicloj/scicloj-data-science-handbook/pull/2#discussion_r548033202
+  [f a b]
+  (let [a-shape (dtype/shape a)
+        b-shape (dtype/shape b)
+        a-rdr   (dtype/->reader a)
+        b-rdr   (dtype/->reader b)
+        n-b     (.lsize b-rdr)
+        n-elems (* (.lsize a-rdr) n-b)]
+    ;;Doing the cartesian join is easier in linear space
+    (-> (dtype/emap
+         (fn [^long idx]
+           (let [a-idx (quot idx n-b)
+                 b-idx (rem idx n-b)]
+             (f (a-rdr a-idx) (b-rdr b-idx))))
+         :object
+         (range n-elems))
+        (dtt/reshape (concat a-shape b-shape)))))
+
+(defn eye [n]
+  (letfn [(= [a b] (if (clojure.core/= a b) 1 0))]
+    (outer-product = (dtt/->tensor (range n))
+                   (dtt/->tensor (range n)))))
+
+(eye 3)
+
+(eye 5)
 
 ["Create an uninitialized array of three integers. The values will be whatever happens to already exist at that memory location
 ```python
@@ -216,6 +322,24 @@ Ex.: `x[4]`, `x[-1]`, `x[1,2]`"]
 
 ;; see https://cnuernber.github.io/dtype-next/tech.v3.datatype.html#var-sub-buffer - not sure if possible to somehow define the "step" - perhaps using argops and indexed-buffer
 
+(def x (dtt/->tensor (range 20)))
+
+;; defined below
+(declare select)
+
+(defn array-slice
+  ([t stop]
+   (dtt/select t (range stop)))
+  ([t start stop]
+   (dtt/select t (range start stop)))
+  ([t start stop step]
+   (dtt/select t (range start stop step))))
+
+
+["These work as expected"]
+(array-slice x 0 20 2)
+(array-slice x 19 0 -2)
+
 ["### Multi-dimensional subarrays
 
 Same as for 1D arrays.
@@ -224,12 +348,29 @@ Same as for 1D arrays.
 
 Clj: You can get/set subrects at a given time using mget/mset! pathways from `tech.v3.tensor`."]
 
+
 ["#### Accessing array rows and columns
 
 One commonly needed routine is accessing of single rows or columns of an array.
 
 `print(x2[:, 0])  # first column of x2`
 `print(x2[0, :])  # first row of x2`"]
+
+(defn select [t & coords]
+  (let [shape-t (dtype/shape t)
+        coords  (map-indexed (fn [i c]
+                               (if (or (nil? c) (empty? c))
+                                 (range (nth shape-t i))
+                                 c))
+                             coords)]
+    (apply dtt/select t coords)))
+
+(def t (-> (dtt/->tensor (range (* 2 3)))
+           (dtt/reshape [2 3])))
+
+(select t nil [0])
+(select t [0] nil)
+
 
 ["#### Subarrays as no-copy views
 
@@ -238,6 +379,8 @@ views rather than copies of the array data
 NOTE: You can use `tech.v3.datatype.argops` to create \"indexes\" for a buffer and then
 combine these with the buffer using `tech.v3.datatype/indexed-buffer` to create a custom
 view of the original buffer"]
+
+;; todo -- does something need to be done for this entry?
 
 ["#### Creating copies of arrays
 
@@ -250,7 +393,8 @@ Despite the nice features of array views, it is sometimes useful to instead expl
 
 For example, if you want to put the numbers 1 through 9 in a 3×3 grid"]
 
-;; see https://scicloj.github.io/tablecloth/#Reshape and ... ?
+(-> (dtt/->tensor (range 1 10))
+    (dtt/reshape [3 3]))
 
 
 ["### Array Concatenation and Splitting
@@ -264,10 +408,115 @@ All of the preceding routines worked on single arrays. It's also possible to com
 
 NumPy: `np.concatenate, np.vstack, and np.hstack`"]
 
+(defn scalar-rank [t] (-> t dtype/shape dtype/shape first))
+
+(defn concatenate
+  ([a b] (concatenate (dec (scalar-rank a)) a b))
+  ([axis a b]
+   (let [left-shape        (dtype/shape a)
+         right-shape       (dtype/shape b)
+         left-join-rank    (nth (dtype/shape a) axis)
+         right-join-rank   (nth (dtype/shape b) axis)
+         left-cross-shape  (map-indexed (fn [i c] (if (= i axis) nil (range c)))
+                                        (dtype/shape a))
+         right-cross-shape (map-indexed (fn [i c] (if (= i axis) nil (range c)))
+                                        (dtype/shape b))
+         left-cross        (filter some? left-cross-shape)
+         right-cross       (filter some? right-cross-shape)
+         crosses           (map dtt/->tensor (interleave left-cross right-cross))
+         final-shape       (map-indexed
+                            (fn [i d]
+                              (if (= i axis) (+ left-join-rank right-join-rank) d))
+                            left-shape)
+         idx'              (dtype/emap
+                            (fn [idx]
+                              (let [special-rank  (nth idx axis)
+                                    target-tensor (if (< special-rank left-join-rank) a b)
+                                    special-idx   (if (< special-rank left-join-rank)
+                                                    special-rank
+                                                    (- special-rank left-join-rank))
+                                    target-coords
+                                    (map-indexed (fn [i d] (if (= i axis) special-idx d)) idx)]
+                                (apply dtt/mget target-tensor target-coords)))
+                            :object
+                            (dtype/->reader (vec (index final-shape))))]
+     (dtt/reshape idx' final-shape))))
+
+(def t23 (dtt/->tensor [[1 2 3] [4 5 6]]))
+(def t22 (dtt/->tensor [["a" "b"] ["c" "d"]]))
+
+(dtt/->tensor [(concat (dtype/->reader (select t23 [0] nil)) (dtype/->reader (select t22 [0] nil)))
+               (concat (dtype/->reader (select t23 [1] nil)) (dtype/->reader (select t22 [1] nil)))])
+
+(nth (dtype/shape t23) (dec 2))
+(concatenate t23 t22)
+
+(-> (concatenate 0 t23 t23)
+    (concatenate (concatenate 0 t22 t22)))
+
+(def t235 (-> (dtt/->tensor (range (* 2 3 5)))
+              (dtt/reshape [2 3 5])))
+
+(concatenate 0 t235 t235)
+
+(concatenate 1 t235 t235)
+
+(concatenate 2 t235 t235)
+
 
 ["#### Splitting of arrays
 
 The opposite of concatenation is splitting, which is implemented by the functions `np.split`, `np.hsplit`, `np.vsplit`, and `np.dsplit` [depth?]. For each of these, we can pass a list of indices giving the split points:"]
+
+(defn normalize [t]
+  (let [min (tech.v3.datatype.functional/min t (apply min (ravel t)))
+        max (tech.v3.datatype.functional/max t (apply max (ravel t)))
+        n   (first (dtype/shape t))]
+    (tech.v3.datatype.functional//
+     (tech.v3.datatype.functional/- t min)
+     (tech.v3.datatype.functional/- max min))))
+
+(normalize t)
+
+(defn split
+  ([t pieces] (split 0 t pieces))
+  ([axis t pieces]
+   (into []
+         (comp 
+          (map (fn [x] (range (first x) (second x))))
+          (map #(conj (mapv (constantly nil) (range axis)) %))
+          (map #(apply select t %)))
+         (->> (dtype/emap #(-> %
+                               Math/floor
+                               int)
+                          :object
+                          (if-let [v (and  (vector? pieces)
+                                           (-> (normalize (dtt/reshape (dtt/->tensor pieces)
+                                                                       [1 (count pieces)]))
+                                               (dtt/reshape [(count pieces)])))]
+                            ;; individual element selection
+                            (tech.v3.datatype.functional/* v
+                                                           (nth (dtype/shape t) axis))
+                            ;; number of partitions selection
+                            (tech.v3.datatype.functional/* (linspace 0 1 (inc pieces))
+                                                           (nth (dtype/shape t) axis))))
+              (partition 2 1)))))
+
+(def t (-> (dtt/->tensor (range (* 2 3 5)))
+           (dtt/reshape [2 3 5])))
+
+(let [t (->> (concatenate 0 t t)
+             (concatenate 0 t))]
+  (split 2 t 5))
+
+(let [t (->> (concatenate 0 t t)
+             (concatenate 0 t))]
+  (split 2 t [2 3 4 2]))
+
+
+
+
+
 
 ["Computation on NumPy Arrays: Universal Functions
  ------------------------------------------------
@@ -286,6 +535,16 @@ dtype-next offers [`tech.v3.datatype.functional`](https://cnuernber.github.io/dt
 ;; see https://cnuernber.github.io/dtype-next/tech.v3.datatype.functional.html
 ;; see https://cnuernber.github.io/dtype-next/tech.v3.datatype.html#var-emap
 
+(tech.v3.datatype.functional// 1.0 t)
+
+(tech.v3.datatype.functional// (dtt/->tensor (map float (range 5)))
+                               (dtt/->tensor (map float (range 1 6))))
+
+
+(-> (range 9)
+    (dtt/->tensor)
+    (dtt/reshape [3 3])
+    (->> (dtype/emap #(Math/pow % 2) nil)))
 
 ["### Exploring NumPy's UFuncs"]
 ["#### Array arithmetic
@@ -294,6 +553,16 @@ dtype-next offers [`tech.v3.datatype.functional`](https://cnuernber.github.io/dt
 * unary ufunc for negation, and a ** operator for exponentiation, and a % operator for modulus
 
 these can be strung together however you wish, and the standard order of operations is respecte"]
+
+
+["Check this table for all kinds of goodies available in `tech.v3.datatype.functional`"]
+(->> (ns-publics 'tech.v3.datatype.functional)
+     (map first)
+     sort
+     (take 100)
+     (dtt/->tensor)
+     (#(dtt/reshape % [25 4])))
+
 
 
 ["### Absolute value"]
@@ -311,17 +580,23 @@ np.arctan(x)
 ```"]
 
 
+
+
 ["#### Exponents and logarithms
 
 * e^x, 2^x, n^x
 * ln(x), log2(x), log10(x)
 * np.expm1(x) = exp(x) - 1, np.log1p(x) = log(1 + x)"]
 
+
+
 ["#### Specialized ufuncs
 
 NumPy has many more ufuncs available, including hyperbolic trig functions, bitwise arithmetic, comparison operators, conversions from radians to degrees, rounding and remainders, and much more. A look through the NumPy documentation reveals a lot of interesting functionality.
 
 Another excellent source for more specialized and obscure ufuncs is the submodule scipy.special. If you want to compute some obscure mathematical function on your data, chances are it is implemented in scipy.special. There are far too many functions to list them all..."]
+
+["`dtype/emap` will serve the vast majority of those needs"]
 
 
 ["### Advanced Ufunc Features"]
@@ -342,6 +617,8 @@ np.add.accumulate(x)  # [1, 3, ..] - store all the intermediate results of reduc
 
 ```"]
 
+;; todo -- multiaxis reduce
+
 ["#### Outer products
 
 Finally, any ufunc can compute the output of all pairs of two different inputs using the `outer` method. This allows you, in one line, to do things like create a multiplication table:
@@ -350,6 +627,9 @@ Finally, any ufunc can compute the output of all pairs of two different inputs u
 x = np.arange(1, 6)
 np.multiply.outer(x, x)
 ```"]
+
+(let [x (dtt/->tensor (range 1 6))]
+  (outer-product * x x))
 
 ["### Ufuncs: Learning More
 
@@ -366,15 +646,154 @@ More information on universal functions (including the full list of available fu
 
 `ds/descriptive-stats` displays these stats: `n-valid`, `n-missing`, `min`, `mean`, `mode`, `max`, `standard-deviation`, `skew`"]
 
+["(Note: Investigate kixi stats and fastmath for this purpose)"]
 ; (ds/descriptive-stats csv-data)
 
 ["### Summing the Values in an Array
-
 `np.sum(L)`"]
+
+
+(defn nd-reduce
+  "Reduce along an axis with an element-wise reduction."
+  ([f t]
+   (if (= 1 (scalar-rank t))
+     (reduce f t)
+     (dtt/reduce-axis (partial apply f) t 0)))
+  ([axis f t]
+   (if (= 1 (scalar-rank t))
+     (reduce f t)
+     (dtt/reduce-axis  (partial apply f) t axis)))
+  ([axis f t datatype]
+   (if (= 1 (scalar-rank t))
+     (reduce f t)
+     (dtt/reduce-axis (partial apply f) t axis
+                      datatype))))
+
+
+
+(defn nd-aggregate
+  "Like reduce, but the entire dimension is presented to the 
+reducing function for an aggregation (such as `mean`)."
+  ([f t]
+   (if (= 1 (scalar-rank t))
+     (f t)
+     (dtt/reduce-axis f t 0)))
+  ([axis f t]
+   (if (= 1 (scalar-rank t))
+     (f t)
+     (dtt/reduce-axis  f t axis)))
+  ([axis f t datatype]
+   (if (= 1 (scalar-rank t))
+     (f t)
+     (dtt/reduce-axis f t axis datatype))))
+
+["Example of reducing along the 0th dimension"]
+
+["APL reference:
+
+```apl
+      draw m
+┏→━━━━━━━━━━━━━┓
+↓ 0  1  2  3  4┃
+┃ 5  6  7  8  9┃
+┃10 11 12 13 14┃
+┃              ┃
+┃15 16 17 18 19┃
+┃20 21 22 23 24┃
+┃25 26 27 28 29┃
+┗━━━━━━━━━━━━━━┛
+ 
+```
+
+Our version:"]
+
+(def m t)
+m
+
+
+
+
+["APL reference:
+
+```apl 
+      draw +/[0] m
+┏→━━━━━━━━━━━━━┓
+↓15 17 19 21 23┃
+┃25 27 29 31 33┃
+┃35 37 39 41 43┃
+┗━━━━━━━━━━━━━━┛
+
+```
+
+Which is equivalent let: "]
+(let [f +] 
+  (dtt/->tensor 
+   [[(f (dtt/mget m 0 0 0) (dtt/mget m 1 0 0)) (f (dtt/mget m 0 0 1) (dtt/mget m 1 0 1)) (f (dtt/mget m 0 0 2) (dtt/mget m 1 0 2)) (f (dtt/mget m 0 0 3) (dtt/mget m 1 0 3)) (f (dtt/mget m 0 0 4) (dtt/mget m 1 0 4)) ]
+    [(f (dtt/mget m 0 1 0) (dtt/mget m 1 1 0)) (f (dtt/mget m 0 1 1) (dtt/mget m 1 1 1)) (f (dtt/mget m 0 1 2) (dtt/mget m 1 1 2)) (f (dtt/mget m 0 1 3) (dtt/mget m 1 1 3)) (f (dtt/mget m 0 1 4) (dtt/mget m 1 1 4)) ]
+    [(f (dtt/mget m 0 2 0) (dtt/mget m 1 2 0)) (f (dtt/mget m 0 2 1) (dtt/mget m 1 2 1)) (f (dtt/mget m 0 2 2) (dtt/mget m 1 2 2)) (f (dtt/mget m 0 2 3) (dtt/mget m 1 2 3)) (f (dtt/mget m 0 2 4) (dtt/mget m 1 2 4)) ]]))
+
+["Which is equivalent to: "]
+
+(nd-reduce 0 + m)
+
+["Note that the initial shape of `m` is `[2 3 5]` and that `(first  m)` is 2.
+Therefore when you reduce along axis 0, you can reason that the output shape will
+be [3 5]."]
+
+(dtype/shape m)
+(dtype/shape (nd-reduce 0 + m))
+
+["As for reducing along the first dimension: 
+
+
+APL reference: 
+```APL
+      draw +/[1] m
+┏→━━━━━━━━━━━━━┓
+↓15 18 21 24 27┃
+┃60 63 66 69 72┃
+┗━━━━━━━━━━━━━━┛
+```
+
+Our version: "]
+
+(nd-reduce 1 + m)
+
+["Again, the shape of `m` is [2 3 5]`.  The index 1 of the shape of `m` is `3`.  Therefore, 
+when we reduce along the 1 dimension of `m`, we can reason that the output shape will be 
+[2 5]. Observe:"]
+
+(dtype/shape (nd-reduce 1 + m))
+
+["And finally for reducing along the last dimension:
+
+APL reference:
+
+```apl
+      draw +/[2] m
+┏→━━━━━━━━━┓
+↓10  35  60┃
+┃85 110 135┃
+┗━━━━━━━━━━┛
+```
+
+"]
+
+(nd-reduce 2 + m)
+
+["Once more, the shape of `m` is [2 3 5].  Since the 2 dimension is 5, we can
+reason that reducing the 2 dimension will result in an output shape of [2 3]: "]
+
+(dtype/shape (nd-reduce 2 + m))
+
+;; todo -- multixis reduce
 
 ["### Minimum and Maximum
 
 `np.min(big_array), np.max(big_array)`"]
+
+'tech.v3.datatype.functional/min
+'tech.v3.datatype.functional/max
 
 ["#### Multi dimensional aggregates
 
@@ -439,16 +858,58 @@ plt.ylabel('number'));
 ^k/dataset
 (ds/head csv-data 3)
 
+(tech.v3.datatype.functional/mean (dtype/->reader (-> csv-data last last)))
+
+(letfn [(mean [x] (float (/ (apply + x) (count x))))]
+  (nd-aggregate mean
+                (dtype/->reader (-> csv-data last last))))
+
+
 ["Computation on Arrays: Broadcasting
  ------------------------------------------------"]
-
-["### WIP"]
 
 ["Comparisons, Masks, and Boolean Logic
  ------------------------------------------------"]
 
+(defn mask [f t]
+  (-> (dtype/emap #(if (f %) 1 0) :int32 t)
+      dtt/->tensor
+      ravel))
+
+(mask zero? (eye 5))
+
 ["Fancy Indexing
  ------------------------------------------------"]
+
+
+(defn compress
+  "Use compress to do an elementwise selection according to an interger boolean
+mask. lhs and rhs must have the same element count.  A 0 on the lhs will drop the corresponding
+element on the rhs.  A 1 on the rhs will keep the element. 2 or great will cause replication
+of the element on the rhs. Returns a tensor of rank 1."
+  [lhs rhs]
+  (let [rhs   (dtt/->tensor rhs)
+        rhr   (dtt/->tensor (ravel rhs))
+        dt    (dtype/get-datatype rhs)
+        shape (dtype/shape lhs)
+        idx'  (into []
+                    (comp
+                     (partition-all 2)
+                     (map #(repeat (first %) (second %)))
+                     cat)
+                    (interleave lhs (index shape)))
+        size  (count idx')]
+    (-> (dtype/make-reader :object size (apply dtt/mget rhr (nth idx' idx)))
+        (dtt/->tensor))))
+
+(compress [0 0 1 0 2] [1 1 2 3 4])
+
+
+["Example: use mask and compress to select all letters at even positions"]
+(let [words "hello there"]
+  (compress
+   (mask even? (dtt/->tensor (range (count words))))
+   (dtt/->tensor (vec words))))
 
 ["Sorting Arrays
  ------------------------------------------------"]

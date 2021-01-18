@@ -15,6 +15,7 @@
   applied-science/darkstar {:git/url "https://github.com/applied-science/darkstar"
                             :sha "541a3ff36065c59e92fe6aa61e41a4385ba6f893"}
   batik-rasterize/batik-rasterize {:mvn/version "0.1.2"}
+  cnuernber/dtype-next            {:mvn/version "6.00-beta-19"}
 
   }
 
