@@ -1,4 +1,4 @@
-(ns scicloj.03-data-manipulation.07_merge_and_join
+(ns scicloj.03-data-manipulation.07-merge-and-join
   (:require [notespace.api :as notespace]
             [notespace.kinds :as kind]
             [clojure.java.io :as io]))
@@ -75,8 +75,23 @@ display('df1', 'df2')
                               :hire-date [2004 2008 2012 2014]}))
 ^kind/dataset
 ds1
+;; => _unnamed [4 2]:
+;;    | :employee |      :group |
+;;    |-----------|-------------|
+;;    |       Bob |  Accounting |
+;;    |      Jake | Engineering |
+;;    |      Lisa | Engineering |
+;;    |       Sue |          HR |
+
 ^kind/dataset
 ds2
+;; => _unnamed [4 2]:
+;;    | :employee | :hire-date |
+;;    |-----------|------------|
+;;    |      Lisa |       2004 |
+;;    |       Bob |       2008 |
+;;    |      Jake |       2012 |
+;;    |       Sue |       2014 |
 
 ["To combine this information into a single DataFrame, we can use the pd.merge()
 function:"]
@@ -84,6 +99,13 @@ function:"]
 (def ds3 (tablecloth/inner-join ds1 ds2 :employee))
 ^kind/dataset
 ds3
+;; => inner-join [4 3]:
+;;    | :employee |      :group | :hire-date |
+;;    |-----------|-------------|------------|
+;;    |      Lisa | Engineering |       2004 |
+;;    |       Bob |  Accounting |       2008 |
+;;    |      Jake | Engineering |       2012 |
+;;    |       Sue |          HR |       2014 |
 
 ["The pd.merge() function recognizes that each DataFrame has an \"employee\"
 column, and automatically joins using this column as a key. The result of the
@@ -104,8 +126,35 @@ of a many-to-one join:"]
 
 (def ds4 (tablecloth/dataset {:group ["Accounting" "Engineering" "HR"]
                               :supervisor ["Carly" "Guido" "Steve"]}))
+
+^kind/dataset
+ds3
+;; => inner-join [4 3]:
+;;    | :employee |      :group | :hire-date |
+;;    |-----------|-------------|------------|
+;;    |      Lisa | Engineering |       2004 |
+;;    |       Bob |  Accounting |       2008 |
+;;    |      Jake | Engineering |       2012 |
+;;    |       Sue |          HR |       2014 |
+
+^kind/dataset
+ds4
+;; => _unnamed [3 2]:
+;;    |      :group | :supervisor |
+;;    |-------------|-------------|
+;;    |  Accounting |       Carly |
+;;    | Engineering |       Guido |
+;;    |          HR |       Steve |
+
 ^kind/dataset
 (tablecloth/inner-join ds3 ds4 :group)
+;; => inner-join [4 4]:
+;;    |      :group | :employee | :hire-date | :supervisor |
+;;    |-------------|-----------|------------|-------------|
+;;    |  Accounting |       Bob |       2008 |       Carly |
+;;    | Engineering |      Lisa |       2004 |       Guido |
+;;    | Engineering |      Jake |       2012 |       Guido |
+;;    |          HR |       Sue |       2014 |       Steve |
 
 ["The resulting DataFrame has an aditional column with the \"supervisor\"
 information, where the information is repeated in one or more locations as
@@ -123,8 +172,40 @@ join, we can recover the skills associated with any individual person:"]
 
 (def ds5 (tablecloth/dataset {:group ["Accounting" "Accounting" "Engineering" "Engineering" "HR" "HR"]
                               :skills ["math" "spreadsheets" "coding" "linux" "spreadsheets" "organization"]}))
+
+ds1
+;; => _unnamed [4 2]:
+;;    | :employee |      :group |
+;;    |-----------|-------------|
+;;    |       Bob |  Accounting |
+;;    |      Jake | Engineering |
+;;    |      Lisa | Engineering |
+;;    |       Sue |          HR |
+
+ds5
+;; => _unnamed [6 2]:
+;;    |      :group |      :skills |
+;;    |-------------|--------------|
+;;    |  Accounting |         math |
+;;    |  Accounting | spreadsheets |
+;;    | Engineering |       coding |
+;;    | Engineering |        linux |
+;;    |          HR | spreadsheets |
+;;    |          HR | organization |
+
 ^kind/dataset
 (tablecloth/inner-join ds1 ds5 :group)
+;; => inner-join [8 3]:
+;;    |      :group | :employee |      :skills |
+;;    |-------------|-----------|--------------|
+;;    |  Accounting |       Bob |         math |
+;;    |  Accounting |       Bob | spreadsheets |
+;;    | Engineering |      Jake |       coding |
+;;    | Engineering |      Lisa |       coding |
+;;    | Engineering |      Jake |        linux |
+;;    | Engineering |      Lisa |        linux |
+;;    |          HR |       Sue | spreadsheets |
+;;    |          HR |       Sue | organization |
 
 ["These three types of joins can be used with other Pandas tools to implement a
 wide array of functionality. But in practice, datasets are rarely as clean as
@@ -146,6 +227,13 @@ on keyword, which takes a column name or a list of column names:"]
 
 ^kind/dataset
 (tablecloth/inner-join ds1 ds2 :employee)
+;; => inner-join [4 3]:
+;;    | :employee |      :group | :hire-date |
+;;    |-----------|-------------|------------|
+;;    |      Lisa | Engineering |       2004 |
+;;    |       Bob |  Accounting |       2008 |
+;;    |      Jake | Engineering |       2012 |
+;;    |       Sue |          HR |       2014 |
 
 ["This option works only if both the left and right DataFrames have the
 specified column name."]
@@ -160,13 +248,60 @@ keywords to specify the two column names:"]
 (def ds3 (tablecloth/dataset {:name ["Bob" "Jake" "Lisa" "Sue"]
                               :salary [70000 80000 120000 90000]}))
 
+ds1
+;; => _unnamed [4 2]:
+;;    | :employee |      :group |
+;;    |-----------|-------------|
+;;    |       Bob |  Accounting |
+;;    |      Jake | Engineering |
+;;    |      Lisa | Engineering |
+;;    |       Sue |          HR |
+
+ds3
+;; => _unnamed [4 2]:
+;;    | :name | :salary |
+;;    |-------|---------|
+;;    |   Bob |   70000 |
+;;    |  Jake |   80000 |
+;;    |  Lisa |  120000 |
+;;    |   Sue |   90000 |
+
 (require '[tech.v3.dataset.join :as join])
-#_(tablecloth/inner-join ds1 ds3 [:employee :name])
+(require '[tech.v3.dataset :as dataset])
+
 ^kind/dataset
 (join/left-join [:employee :name] ds1 ds3)
+;; => left-outer-join [4 4]:
+;;    | :employee |      :group | :name | :salary |
+;;    |-----------|-------------|-------|---------|
+;;    |       Bob |  Accounting |   Bob |   70000 |
+;;    |      Jake | Engineering |  Jake |   80000 |
+;;    |      Lisa | Engineering |  Lisa |  120000 |
+;;    |       Sue |          HR |   Sue |   90000 |
+
 
 ["The result has a redundant column that we can drop if desired–for example, by
-using the drop() method of DataFrames:"]
+using the drop-columns method of tablecloth:"]
+
+^kind/dataset
+(-> (join/right-join [:employee :name] ds1 ds3)
+    (dataset/drop-columns [:name]))
+;; => right-outer-join [4 3]:
+;;    | :employee |      :group | :salary |
+;;    |-----------|-------------|---------|
+;;    |       Bob |  Accounting |   70000 |
+;;    |      Jake | Engineering |   80000 |
+;;    |      Lisa | Engineering |  120000 |
+;;    |       Sue |          HR |   90000 |
+
+["or you can just use inner-join from tech.ml.dataset:"]
 
 ^kind/dataset
 (join/inner-join [:employee :name] ds1 ds3)
+;; => inner-join [4 3]:
+;;    | :employee |      :group | :salary |
+;;    |-----------|-------------|---------|
+;;    |       Bob |  Accounting |   70000 |
+;;    |      Jake | Engineering |   80000 |
+;;    |      Lisa | Engineering |  120000 |
+;;    |       Sue |          HR |   90000 |
