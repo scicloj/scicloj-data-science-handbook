@@ -22,7 +22,8 @@
 
 
 (defn- read-group-news-20 [train-or-test]
-  (let [data
+  (let [temp-dir (str (System/getProperty "java.io.tmpdir" ) "/")
+        data
         (->> (file-seq (io/file (str temp-dir  "20news-bydate-" (name train-or-test))))
              (filter #(.isFile %))
              (map  #(hash-map
