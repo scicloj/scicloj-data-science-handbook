@@ -33,9 +33,6 @@
       (+ (tensor/broadcast center [n-samples 2]))))
 
 
-
-
-
 (defn make-blob ; mimicking the python make_blob function
   [rng n-smaples n-centers std]
   (->> #(random-center rng)
@@ -56,13 +53,19 @@
 
 
 
-(let [rng (random/rng :isaac 1337)] (make-blob rng 10 2 1))
 
 
 (comment
 
-  (-> (random/rng :isaac 1337)
-      (random-center))
+
+(let [rng (random/rng :isaac 1337)] (make-blob rng 10 2 1))
+  (repeatedly 10
+              #(-> (random/rng :isaac )
+                   (random-center)
+
+                   )
+
+              )
 
   (-> (random/rng :isaac 1337)
       (random-point))
@@ -76,7 +79,7 @@
         (* std)
         (+ (tensor/broadcast center [n-samples 2]))))
 
- (let [rng    (random/rng :isaac 1337)
-      center [30 -40]]
-  [center (random-points-around-center rng 12 center 3)])
+  (let [rng    (random/rng :isaac 1337)
+        center [30 -40]]
+    [center (random-points-around-center rng 12 center 3)])
   )

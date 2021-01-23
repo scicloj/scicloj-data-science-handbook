@@ -21,7 +21,7 @@
   (notespace/eval-this-notespace)
   )
 
-;; Chapter 05 - Machine learning
+;; Chapter 05 - Machine learning gg
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;
 
@@ -33,6 +33,8 @@
          '[tech.v3.dataset.categorical :as ds-cat]
          '[tech.v3.dataset.column-filters :as cf]
          '[tablecloth.api :as tablecloth]
+         '[tech.v3.datatype :as dt]
+         '[tech.v3.tensor :as dtt]
          '[tech.viz.vega :as viz]
          '[aerial.hanami.common :as hanami-common]
          '[aerial.hanami.templates :as hanami-templates]
@@ -48,9 +50,11 @@
          '[tech.v3.ml.metrics :as ml-metrics]
          '[scicloj.helpers.datasets :as datasets]
          '[fastmath.random :as random]
+         '[tech.v3.datatype.functional :as dtype-fn]
 
          )
-
+(import '[smile.stat.distribution Distribution GaussianDistribution]
+        [smile.classification NaiveBayes])
 
 ["## Bayesian Classification"]
 ["TODO"]
@@ -66,13 +70,120 @@ plt.scatter(X[:, 0], X[:, 1], c=y, s=50, cmap='RdBu');
 "]
 
 
+
+(def blobs
+  (-> (random/rng :isaac 1337)
+      ;; (random/rng :isaac 928)
+      (datasets/make-blob 100 2 1.5))
+  )
+
+(def max-x (+ 2 (apply dtype-fn/max (blobs :x))))
+(def max-y (+ 2  (apply dtype-fn/max (blobs :y))))
+(def min-x (- (apply dtype-fn/min (blobs :x))  2) )
+(def min-y (-  (apply dtype-fn/min (blobs :y)) 2) )
+(def range-x  (- max-x min-x))
+(def range-y  (- max-y min-y))
+
 ^kind/vega
-(-> (random/rng :isaac 1337)
- (datasets/make-blob 100 2 1.5)
+(-> blobs
  (tablecloth/rows :as-maps)
  (viz/scatterplot
   :x :y
   {:label-key :i}))
+
+(defn get-x-i [ds i x-or-y]
+  (-> ds
+      (tablecloth/select-rows (comp #(= i %) :i ) )
+      (tablecloth/select-columns x-or-y)
+      (get x-or-y)
+      (dt/->double-array)
+      ))
+
+(def cond-prob
+  (into-array [(into-array Distribution [(GaussianDistribution/fit (get-x-i blobs 0 :x ))
+                                         (GaussianDistribution/fit (get-x-i blobs 0 :y))]
+
+                           )
+               (into-array Distribution [(GaussianDistribution/fit (get-x-i blobs 1 :x ))
+                                         (GaussianDistribution/fit (get-x-i blobs 1 :y ))])]))
+
+(def nb
+  (NaiveBayes. (double-array [0.5 0.5]) cond-prob ))
+
+(def x-new
+  (->>
+   (take 2000
+         (random/sequence-generator :default 2))
+    (map
+     #(fastmath.vector/emult [range-x range-y] %))
+    (map
+     #(fastmath.vector/add [  min-x  min-y ] %))))
+
+(def y-new
+  (map
+   #(.predict nb (dt/->double-array %))
+   x-new))
+
+(def gaussian-class
+  (map
+   (fn [y [x1 x2]]
+     (hash-map
+      :x x1
+      :y x2
+      :i (+  y 2)))
+   y-new
+   x-new))
+
+(def blobs+gauss
+  (concat (tablecloth/rows  blobs :as-maps)
+          gaussian-class))
+
+^kind/vega
+{:$schema
+ "https://vega.github.io/schema/vega-lite/v4.json",
+ :width 600
+ :height 400
+ :data {:values blobs+gauss}
+ :layer [
+         {
+          :transform [{:filter {"field" "i", "gt" 1}}]
+          :encoding
+          {:x {:field "x", :type "quantitative"  :scale {:domain [min-x max-x]}},
+           :y {:field "y", :type "quantitative"  :scale {:domain [min-y max-y]}},
+           :color
+           {:field "i" :type "nominal"
+            :scale {:range ["red" "blue"] }
+            }
+           }
+          :mark {:type "circle" :fillOpacity 0.2}}
+         {
+          :transform [{:filter {"field" "i", "lt" 2}}]
+          :encoding
+          {:x {:field "x", :type "quantitative" :scale {:domain [min-x max-x]} },
+           :y {:field "y", :type "quantitative" :scale {:domain [min-y max-y]} },
+           :color
+           {:field "i" :type "nominal"
+            :scale {:range ["red" "blue"] }
+            :legend nil
+            }
+           }
+          :mark {:type  "circle"
+                 :fillOpacity 1
+                 :size 50}
+          }
+         ]
+ :config
+ {:axis {:grid true}}}
+
+
+
+^kind/vega
+;; (-> gaussian-class
+;;  ;; (tablecloth/rows :as-maps)
+;;  (viz/scatterplot
+;;   :x1 :x2
+;;   {:label-key :y}))
+
 
 ["TODO
 
