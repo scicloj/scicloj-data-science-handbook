@@ -220,7 +220,7 @@ Sometimes we want to to save the plots as files on our filesystem for other usag
 
 ^kind/hidden
 ["Note that when saving your figure, it's not necessary to use plt.show() or related commands discussed earlier."]
-k
+
 ^kind/hidden
 ["## Two Interfaces for the Price of One¶
 
@@ -319,9 +319,10 @@ Once we have created an axes, we can use the ax.plot function to plot some data.
 
 
 ^kind/vega
-(->> sin-cos-data
+(-> sin-cos-data
      (hanami-plot hanami-templates/line-chart)
-     (#(assoc-in % [:encoding :strokeDash] {:field :label, :type "nominal"})))
+     (#(assoc-in % [:encoding :strokeDash] {:field :label, :type "nominal"}))
+     )
 
 ^kind/hidden
 ["That's all there is to plotting simple functions in Matplotlib! We'll now dive into some more details about how to control the appearance of the axes and lines."]
