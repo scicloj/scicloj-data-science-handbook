@@ -652,40 +652,27 @@ More information on universal functions (including the full list of available fu
 ["### Summing the Values in an Array
 `np.sum(L)`"]
 
+(defn nd-aggregate
+  "Reduce along an axis with an element-wise reduction.
+   The entire dimension is presented to the
+reducing function for an aggregation (such as `mean`)."
+  ([f t]
+   (nd-aggregate 0 f t))
+  ([axis f t]
+   (nd-aggregate 0 f t (dtype/elemwise-datatype t)))
+  ([axis f t datatype]
+   (if (= 1 (scalar-rank t)) ;; TEMPORARY until dtt/reduce-axis handles 1D
+     (f t)
+     (dtt/reduce-axis f t axis datatype))))
 
 (defn nd-reduce
   "Reduce along an axis with an element-wise reduction."
   ([f t]
-   (if (= 1 (scalar-rank t))
-     (reduce f t)
-     (dtt/reduce-axis (partial apply f) t 0)))
+   (nd-reduce 0 f t))
   ([axis f t]
-   (if (= 1 (scalar-rank t))
-     (reduce f t)
-     (dtt/reduce-axis  (partial apply f) t axis)))
+   (nd-reduce axis f t (dtype/elemwise-datatype t)))
   ([axis f t datatype]
-   (if (= 1 (scalar-rank t))
-     (reduce f t)
-     (dtt/reduce-axis (partial apply f) t axis
-                      datatype))))
-
-
-
-(defn nd-aggregate
-  "Like reduce, but the entire dimension is presented to the 
-reducing function for an aggregation (such as `mean`)."
-  ([f t]
-   (if (= 1 (scalar-rank t))
-     (f t)
-     (dtt/reduce-axis f t 0)))
-  ([axis f t]
-   (if (= 1 (scalar-rank t))
-     (f t)
-     (dtt/reduce-axis  f t axis)))
-  ([axis f t datatype]
-   (if (= 1 (scalar-rank t))
-     (f t)
-     (dtt/reduce-axis f t axis datatype))))
+   (nd-aggregate axis (partial apply f) t datatype)))
 
 ["Example of reducing along the 0th dimension"]
 
@@ -728,9 +715,9 @@ m
 Which is equivalent let: "]
 (let [f +] 
   (dtt/->tensor 
-   [[(f (dtt/mget m 0 0 0) (dtt/mget m 1 0 0)) (f (dtt/mget m 0 0 1) (dtt/mget m 1 0 1)) (f (dtt/mget m 0 0 2) (dtt/mget m 1 0 2)) (f (dtt/mget m 0 0 3) (dtt/mget m 1 0 3)) (f (dtt/mget m 0 0 4) (dtt/mget m 1 0 4)) ]
-    [(f (dtt/mget m 0 1 0) (dtt/mget m 1 1 0)) (f (dtt/mget m 0 1 1) (dtt/mget m 1 1 1)) (f (dtt/mget m 0 1 2) (dtt/mget m 1 1 2)) (f (dtt/mget m 0 1 3) (dtt/mget m 1 1 3)) (f (dtt/mget m 0 1 4) (dtt/mget m 1 1 4)) ]
-    [(f (dtt/mget m 0 2 0) (dtt/mget m 1 2 0)) (f (dtt/mget m 0 2 1) (dtt/mget m 1 2 1)) (f (dtt/mget m 0 2 2) (dtt/mget m 1 2 2)) (f (dtt/mget m 0 2 3) (dtt/mget m 1 2 3)) (f (dtt/mget m 0 2 4) (dtt/mget m 1 2 4)) ]]))
+   [[(f (dtt/mget m 0 0 0) (dtt/mget m 1 0 0)) (f (dtt/mget m 0 0 1) (dtt/mget m 1 0 1)) (f (dtt/mget m 0 0 2) (dtt/mget m 1 0 2)) (f (dtt/mget m 0 0 3) (dtt/mget m 1 0 3)) (f (dtt/mget m 0 0 4) (dtt/mget m 1 0 4))]
+    [(f (dtt/mget m 0 1 0) (dtt/mget m 1 1 0)) (f (dtt/mget m 0 1 1) (dtt/mget m 1 1 1)) (f (dtt/mget m 0 1 2) (dtt/mget m 1 1 2)) (f (dtt/mget m 0 1 3) (dtt/mget m 1 1 3)) (f (dtt/mget m 0 1 4) (dtt/mget m 1 1 4))]
+    [(f (dtt/mget m 0 2 0) (dtt/mget m 1 2 0)) (f (dtt/mget m 0 2 1) (dtt/mget m 1 2 1)) (f (dtt/mget m 0 2 2) (dtt/mget m 1 2 2)) (f (dtt/mget m 0 2 3) (dtt/mget m 1 2 3)) (f (dtt/mget m 0 2 4) (dtt/mget m 1 2 4))]]))
 
 ["Which is equivalent to: "]
 
@@ -867,6 +854,7 @@ plt.ylabel('number'));
 
 ["Computation on Arrays: Broadcasting
  ------------------------------------------------"]
+;; see tech.v3.tensor/broadcast
 
 ["Comparisons, Masks, and Boolean Logic
  ------------------------------------------------"]
@@ -877,6 +865,8 @@ plt.ylabel('number'));
       ravel))
 
 (mask zero? (eye 5))
+
+;; I guess indexed-buffer could be the answer: use a tensor with a boolean operator to somehow produce the index of the truthy values, then use that to create a derived indexed-buffer for use in computations.
 
 ["Fancy Indexing
  ------------------------------------------------"]
