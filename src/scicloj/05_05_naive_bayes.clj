@@ -11,19 +11,18 @@
   ;; Manually start an empty notespace
   (notespace/init-with-browser)
 
-  ;; Renders the notes and listens to file changes
+  Renders the notes and listens to file changes
   (notespace/listen)
 
-  ;; Clear an existing notespace browser
+  Clear an existing notespace browser
   (notespace/init)
 
-  ;; Evaluating a whole notespace
+  Evaluating a whole notespace
   (notespace/eval-this-notespace)
   )
 
-;; Chapter 05 - Machine learning gg
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;
+
+
 
 ["# In Depth: Naive Bayes Classification"]
 
@@ -51,8 +50,10 @@
          '[scicloj.helpers.datasets :as datasets]
          '[fastmath.random :as random]
          '[tech.v3.datatype.functional :as dtype-fn]
+         '[tech.v3.tensor :as dtt]
+         '[tech.v3.datatype.functional :refer [* +]]
+         '[fastmath.random :as fm.rand])
 
-         )
 (import '[smile.stat.distribution Distribution GaussianDistribution]
         [smile.classification NaiveBayes])
 
@@ -73,7 +74,7 @@ plt.scatter(X[:, 0], X[:, 1], c=y, s=50, cmap='RdBu');
 
 (def blobs
   (-> (random/rng :isaac 1337)
-      ;; (random/rng :isaac 928)
+      (random/rng :isaac 928)
       (datasets/make-blob 100 2 1.5))
   )
 
@@ -110,14 +111,23 @@ plt.scatter(X[:, 0], X[:, 1], c=y, s=50, cmap='RdBu');
 (def nb
   (NaiveBayes. (double-array [0.5 0.5]) cond-prob ))
 
+
+(def s [2000 2])
+
+(defn seq->tensor [seq shape]
+  (dtt/broadcast (dtt/->tensor seq :datatype :float32) shape)
+  )
+
 (def x-new
-  (->>
-   (take 2000
-         (random/sequence-generator :default 2))
-    (map
-     #(fastmath.vector/emult [range-x range-y] %))
-    (map
-     #(fastmath.vector/add [  min-x  min-y ] %))))
+  (+
+   (seq->tensor [min-x min-y] s)
+   (*
+    (seq->tensor [range-x range-y] s)
+    (-> (dtt/compute-tensor s (fn [_ _] (fm.rand/frand)) :float64)
+        (dtt/->tensor)
+        ))))
+
+
 
 (def y-new
   (map
