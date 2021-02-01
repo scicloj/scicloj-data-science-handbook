@@ -220,7 +220,7 @@ Sometimes we want to to save the plots as files on our filesystem for other usag
 
 ^kind/hidden
 ["Note that when saving your figure, it's not necessary to use plt.show() or related commands discussed earlier."]
-k
+
 ^kind/hidden
 ["## Two Interfaces for the Price of One¶
 
