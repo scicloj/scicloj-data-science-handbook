@@ -27,6 +27,17 @@
 
 ["# In Depth: Linear Regression"]
 
+["This chapter uses python interop via libpython-clj"]
+
+["You need to initalize it correctling with a python environment containing python module 'scikit-learn'"]
+
+
+(comment
+  (require '[libpython-clj.python :as py])
+  ;; When you use conda, it should look like this.
+ (py/initialize! :python-executable "/opt/anaconda3/envs/my_env/bin/python3.7"
+                 :library-path "/opt/anaconda3/envs/my_env/lib/libpython3.7m.dylib")
+  )
 
 (require '[clojure.java.io :as io]
          '[clojure.string :as str]
@@ -347,3 +358,5 @@ plt.plot(xfit, yfit);
             :type "quantitative"}}}]
 
  }
+
+["## Gaussian basis functions"]
