@@ -140,17 +140,17 @@ NA values). For a Series, the result is straightforward:"]
 
 ["For a DataFrame, there are more options. Consider the following DataFrame:"]
 
-(def DS (tablecloth/dataset {0 [1 2 Float/NaN ]
-                             1 [Float/NaN 3 4]
-                             2 [2 5 6]}))
+(def DS (tablecloth/dataset {:A [1 2 nil]
+                             :B [nil 3 4]
+                             :C [2 5 6]}))
 ^kind/dataset
 DS
 ;; => _unnamed [3 3]:
-;;    |   0 |   1 | 2 |
-;;    |-----|-----|---|
-;;    | 1.0 | NaN | 2 |
-;;    | 2.0 | 3.0 | 5 |
-;;    | NaN | 4.0 | 6 |
+;;    | :A | :B | :C |
+;;    |----|----|----|
+;;    |  1 |    |  2 |
+;;    |  2 |  3 |  5 |
+;;    |    |  4 |  6 |
 
 ["We cannot drop single values from a DataFrame; we can only drop full rows or
 full columns. Depending on the application, you might want one or the other, so
@@ -159,17 +159,20 @@ dropna() gives a number of options for a DataFrame.
 By default, dropna() will drop all rows in which any null value is present:"]
 
 (tablecloth/drop-missing DS)
-;; => _unnamed [3 3]:
-;;    |   0 |   1 | 2 |
-;;    |-----|-----|---|
-;;    | 1.0 | NaN | 2 |
-;;    | 2.0 | 3.0 | 5 |
-;;    | NaN | 4.0 | 6 |
+;; => _unnamed [1 3]:
+;;    | :A | :B | :C |
+;;    |----|----|----|
+;;    |  2 |  3 |  5 |
 
 ["Alternatively, you can drop NA values along a different axis; axis=1 drops all
 columns containing a null value:"]
 
 (tablecloth/drop-missing DS :A)
+;; => _unnamed [2 3]:
+;;    | :A | :B | :C |
+;;    |----|----|----|
+;;    |  1 |    |  2 |
+;;    |  2 |  3 |  5 |
 
 ["But this drops some good data as well; you might rather be interested in
 dropping rows or columns with all NA values, or a majority of NA values. This
@@ -184,12 +187,25 @@ how='all', which will only drop rows/columns that are all null values:"]
          '[tech.v3.dataset.column :as ds-col])
 
 (def DS1 (tablecloth/add-or-replace-column DS :D nil))
+
 ^kind/dataset
 DS1
+;; => _unnamed [3 4]:
+;;    | :A | :B | :C | :D |
+;;    |----|----|----|----|
+;;    |  1 |    |  2 |    |
+;;    |  2 |  3 |  5 |    |
+;;    |    |  4 |  6 |    |
 
 ^kind/dataset
 (tablecloth/drop-columns DS1 (tablecloth/column-names
                               (cf/column-filter DS1 #(= (ds/row-count DS1) (count (vec (ds-col/missing %)))))))
+;; => _unnamed [3 3]:
+;;    | :A | :B | :C |
+;;    |----|----|----|
+;;    |  1 |    |  2 |
+;;    |  2 |  3 |  5 |
+;;    |    |  4 |  6 |
 
 ["For finer-grained control, the thresh parameter lets you specify a minimum
 number of non-null values for the row/column to be kept:"]
@@ -197,10 +213,22 @@ number of non-null values for the row/column to be kept:"]
 ^kind/dataset
 (tablecloth/drop-columns DS1 (tablecloth/column-names
                               (cf/column-filter DS1 #(= 3  (count (vec (ds-col/missing %)))))))
+;; => _unnamed [3 3]:
+;;    | :A | :B | :C |
+;;    |----|----|----|
+;;    |  1 |    |  2 |
+;;    |  2 |  3 |  5 |
+;;    |    |  4 |  6 |
 
 ^kind/dataset
 (tablecloth/drop-rows DS1 (fn [row]
-                            (> 3 (count (filter some? (vals row))))))
+                            (< 3 (count (filter some? (vals row))))))
+;; => _unnamed [3 4]:
+;;    | :A | :B | :C | :D |
+;;    |----|----|----|----|
+;;    |  1 |    |  2 |    |
+;;    |  2 |  3 |  5 |    |
+;;    |    |  4 |  6 |    |
 
 ["Here the first and last row have been dropped, because they contain only two
 non-null values."]
@@ -217,33 +245,82 @@ a copy of the array with the null values replaced."]
 ["Consider the following dataset:"]
 
 (def DS2 (tablecloth/dataset {:A [1 nil 2 nil 3]}))
+
 ^kind/dataset
 DS2
+;; => _unnamed [5 1]:
+;;    | :A |
+;;    |----|
+;;    |  1 |
+;;    |    |
+;;    |  2 |
+;;    |    |
+;;    |  3 |
 
 ["We can fill NA entries with a single value, such as zero:"]
 
 ^kind/dataset
 (tablecloth/replace-missing DS2 [:A] :value 0)
+;; => _unnamed [5 1]:
+;;    | :A |
+;;    |----|
+;;    |  1 |
+;;    |  0 |
+;;    |  2 |
+;;    |  0 |
+;;    |  3 |
 
 ["We can specify a down-fill to propagate the previous value down:"]
 
 ^kind/dataset
 (tablecloth/replace-missing DS2 [:A] :down)
+;; => _unnamed [5 1]:
+;;    | :A |
+;;    |----|
+;;    |  1 |
+;;    |  1 |
+;;    |  2 |
+;;    |  2 |
+;;    |  3 |
 
 ["Or we can specify a up-fill to propagate the next values up:"]
 
 ^kind/dataset
 (tablecloth/replace-missing DS2 [:A] :up)
+;; => _unnamed [5 1]:
+;;    | :A |
+;;    |----|
+;;    |  1 |
+;;    |  2 |
+;;    |  2 |
+;;    |  3 |
+;;    |  3 |
 
 ["Or we can specify a mid-fill to calculate the missing value:"]
 
 ^kind/dataset
 (tablecloth/replace-missing DS2 [:A] :mid)
+;; => _unnamed [5 1]:
+;;    | :A |
+;;    |----|
+;;    |  1 |
+;;    |  1 |
+;;    |  2 |
+;;    |  2 |
+;;    |  3 |
 
 ["Or we can specify a Linear interpolation fill to calculate the missing value:"]
 
 ^kind/dataset
 (tablecloth/replace-missing DS2 [:A] :lerp)
+;; => _unnamed [5 1]:
+;;    |  :A |
+;;    |-----|
+;;    | 1.0 |
+;;    | 1.5 |
+;;    | 2.0 |
+;;    | 2.5 |
+;;    | 3.0 |
 
 ["Notice that if a previous value is not available during a down fill, the up
 value are used."]
