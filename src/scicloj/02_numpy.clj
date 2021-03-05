@@ -34,6 +34,7 @@ for working efficiently with dataset data."]
 (require
  '[tech.v3.dataset :as ds]
  '[tech.v3.datatype :as dtype]
+ '[tech.v3.datatype.functional :as dtf]
  '[tech.v3.tensor :as dtt]
  '[tablecloth.api :as api])
 
@@ -853,7 +854,61 @@ plt.ylabel('number'));
 
 
 ["Computation on Arrays: Broadcasting
- ------------------------------------------------"]
+ ------------------------------------------------
+
+ Broadcasting is simply a set of rules for applying binary ufuncs (e.g., addition, subtraction, multiplication, etc.) on arrays of different sizes.
+
+ The elemwise operations exposed in `tech.v3.datatype.functional` work on tensors although at this point 'broadcasting' is manually required.
+ What do we mean by that? To broadcast means to create a larger, read-only tensor via repeating one or more dimensions:
+
+ ```clojure
+ (broadcast t new-shape)
+ ```
+
+ An important limitation is that the new shape’s dimension must be even multiples of the old shape’s dimensions. Elements are repeated to fill the new , bigger shape.
+
+ Example: Add a scalar (think of it as a zero-dimensional array) to an array:"]
+(dtf/+
+  (dtt/->tensor [0, 1, 2])
+  5)
+
+["We can think of this as an operation that stretches or duplicates the value 5 into the array [5, 5, 5], and adds the results.
+
+We can similarly extend this to arrays of higher dimension. Observe the result when we add a one-dimensional array to a two-dimensional array:
+
+(NumPy: M = np.ones((3, 3)); M + np.array([0, 1, 2])"]
+(def M
+  (dtype/emap
+    (constantly 1) :int
+    (dtt/new-tensor [3 3])))
+
+(dtf/+ M
+       (-> (dtt/->tensor [0, 1, 2])
+           ;; Contrary to NumPy, we must, as of now, broadcast manually:
+           (dtt/broadcast (dtype/shape M))))
+
+["More complicated cases can involve broadcasting of both arrays:
+
+```python
+a = np.arange(3)                # row
+b = np.arange(3)[:, np.newaxis] # column
+
+a + b
+=>
+array([[0, 1, 2],
+       [1, 2, 3],
+       [2, 3, 4]])
+```"]
+(let [a (-> (dtt/->tensor (range 3))
+            (dtt/reshape [1 3]))
+      b (-> (dtt/->tensor (range 3))
+            (dtt/reshape [3 1]))]
+  (dtf/+ (dtt/broadcast a [3 3])
+         (dtt/broadcast b [3 3])))
+
+; https://jakevdp.github.io/PythonDataScienceHandbook/02.05-computation-on-arrays-broadcasting.html
+
+
 ;; see tech.v3.tensor/broadcast
 
 ["Comparisons, Masks, and Boolean Logic
