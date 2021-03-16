@@ -660,7 +660,7 @@ reducing function for an aggregation (such as `mean`)."
   ([f t]
    (nd-aggregate 0 f t))
   ([axis f t]
-   (nd-aggregate 0 f t (dtype/elemwise-datatype t)))
+   (nd-aggregate axis f t (dtype/elemwise-datatype t)))
   ([axis f t datatype]
    (if (= 1 (scalar-rank t)) ;; TEMPORARY until dtt/reduce-axis handles 1D
      (f t)
@@ -906,8 +906,30 @@ array([[0, 1, 2],
   (dtf/+ (dtt/broadcast a [3 3])
          (dtt/broadcast b [3 3])))
 
-; https://jakevdp.github.io/PythonDataScienceHandbook/02.05-computation-on-arrays-broadcasting.html
+["# Broadcasting in Practice
 
+## Centering an array
+
+Given a dataset of 10 rows and three columns (features),
+subtract each feature's mean.
+"]
+
+(def arr2center
+ (dtype/emap
+   (fn [_] (fastmath.random/frand)) nil
+   (dtt/new-tensor [10 3])))
+
+(def arr2center'
+ (dtf/- arr2center
+        (-> (nd-aggregate dtf/mean arr2center)
+            (dtt/broadcast (dtype/shape arr2center)))))
+
+;; The mean now should be ±0:
+(nd-aggregate dtf/mean arr2center') ; wrong? 0.2 seems too far from 0, did I make a mistake?
+
+["## Plotting a two-dimensional function"]
+
+; WIP https://jakevdp.github.io/PythonDataScienceHandbook/02.05-computation-on-arrays-broadcasting.html#Plotting-a-two-dimensional-function
 
 ;; see tech.v3.tensor/broadcast
 
