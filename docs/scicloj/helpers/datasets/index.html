@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en-US">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <link href="https://stackpath.bootstrapcdn.com/bootswatch/4.5.0/sandstone/bootstrap.min.css" rel="stylesheet" type="text/css">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.6.0/styles/solarized-light.min.css" rel="stylesheet" type="text/css">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/ag-grid/24.0.0/styles/ag-grid.min.css" rel="stylesheet" type="text/css">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/ag-grid/24.0.0/styles/ag-theme-balham.min.css" rel="stylesheet" type="text/css">
+        <link href="https://unpkg.com/leaflet@1.6.0/dist/leaflet.css" rel="stylesheet" type="text/css">
+
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+        <!-- The loading of KaTeX is deferred to speed up page rendering -->
+        <script defer src="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.js" integrity="sha384-g7c+Jr9ZivxKLnZTDUhnkOnsh30B4H0rpLUpJ4jAIKs4fnJI+sEnkvrMWph2EDg4" crossorigin="anonymous"></script>
+    </head>
+    <body>
+        <p id="loading">Loading ...</p>
+        <div id="app"></div>
+    </body>
+    <script id="state" type="text">"{:options {:reverse-notes? false, :header? false, :notes-in-cards? false, :initially-collapse? false, :auto-scroll? false, :port 1903, :custom-header [:div {:style {:font-style \"italic\", :font-family \"\\\"Lucida Console\\\", Courier, monospace\"}} \"(notespace)\" [:p \"Fri Jul 16 15:00:05 IDT 2021\"] nil [:hr]], :custom-footer [:div [:hr] [:hr]]}, :ids [\"105\" \"106\" \"107\" \"108\" \"109\" \"110\" \"111\"], :id->content {\"105\" [:div [:p] nil nil [:p/markdown \"Trying to mimic the make-blob function of sklearn (not sure about its implementation at the moment):\"]], \"106\" [:div [:p] nil nil [:p/markdown \"https://github.com/scikit-learn/scikit-learn/blob/42aff4e2e/sklearn/datasets/_samples_generator.py#L839\"]], \"107\" [:div [:p] [:div [:p/code {:code \"(defn random-center\\n  [rng]\\n  (-> (repeatedly 2 #(random/drandom rng))\\n      vec\\n      (* 20)\\n      (- 10)))\", :bg-class \"bg-light\"}]] nil nil], \"108\" [:div [:p] [:div [:p/code {:code \"(defn random-point\\n  [rng]\\n  (repeatedly 2 #(random/grandom rng)))\", :bg-class \"bg-light\"}]] nil nil], \"109\" [:div [:p] [:div [:p/code {:code \"(defn random-points-around-center\\n  [rng n-samples center std]\\n  (-> (repeatedly n-samples #(random-point rng))\\n      tensor/->tensor\\n      (* std)\\n      (+ (tensor/broadcast center [n-samples 2]))))\", :bg-class \"bg-light\"}]] nil nil], \"110\" [:div [:p] [:div [:p/code {:code \"(defn make-blob ; mimicking the python make_blob function\\n  [rng n-smaples n-centers std]\\n  (->> #(random-center rng)\\n       (repeatedly n-centers)\\n       (map-indexed\\n        (fn [i center]\\n          (-> rng\\n              (random-points-around-center (quot n-smaples\\n                                                 n-centers)\\n                                           center\\n                                           std)\\n              tensor/columns\\n              (->> (map vec)\\n                   (zipmap [:x :y]))\\n              tablecloth/dataset\\n              (tablecloth/add-or-replace-column :i i))))\\n       (apply tablecloth/concat)))\", :bg-class \"bg-light\"}]] nil nil], \"111\" [:div [:p] [:div [:p/code {:code \"(comment\\n\\n\\n(let [rng (random/rng :isaac 1337)] (make-blob rng 10 2 1))\\n  (repeatedly 10\\n              #(-> (random/rng :isaac )\\n                   (random-center)\\n\\n                   )\\n\\n              )\\n\\n  (-> (random/rng :isaac 1337)\\n      (random-point))\\n\\n  (let [rng    (random/rng :isaac 1337)\\n        center [30 -40]\\n        n-samples 100\\n        std 10]\\n    (-> (repeatedly n-samples #(random-point rng))\\n        tensor/->tensor\\n        (* std)\\n        (+ (tensor/broadcast center [n-samples 2]))))\\n\\n  (let [rng    (random/rng :isaac 1337)\\n        center [30 -40]]\\n    [center (random-points-around-center rng 12 center 3)])\\n  )\", :bg-class \"bg-light\"}]] nil [:p/code {:code \"nil\\n\"}]]}}"</script>
+    <script src="gorilla-notes/js/compiled/main.js"></script>
+</html>
