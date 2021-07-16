@@ -2,23 +2,21 @@
  ["src" "resources"]
 
  :deps
- {org.clojure/clojure {:mvn/version "1.10.2"}
+ {org.clojure/clojure {:mvn/version "1.10.3"}
 
-  scicloj/notespace  {:mvn/version "3-alpha3-SNAPSHOT"}
-  scicloj/tablecloth {:mvn/version "5.00-beta-28"}
+  scicloj/notespace  {:mvn/version "3-beta7"}
+  scicloj/tablecloth {:mvn/version "6.002"}
 
   aerial.hanami/aerial.hanami {:mvn/version "0.12.7"}
-  generateme/fastmath         {:mvn/version "2.0.5"}
-  techascent/tech.viz         {:mvn/version "0.4.3"}
+  generateme/fastmath         {:mvn/version "2.1.5"}
+  techascent/tech.viz         {:mvn/version "6.00-beta-16-2"}
   techascent/tech.ml          {:mvn/version "5.00-beta-13-SNAPSHOT"}
-  techascent/tech.ml.dataset  {:mvn/version "5.00-beta-23"}
 
-  applied-science/darkstar {:git/url "https://github.com/applied-science/darkstar"
-                            :sha "541a3ff36065c59e92fe6aa61e41a4385ba6f893"}
+  ;; applied-science/darkstar {:git/url "https://github.com/applied-science/darkstar"
+  ;;                           :sha "541a3ff36065c59e92fe6aa61e41a4385ba6f893"}
   batik-rasterize/batik-rasterize {:mvn/version "0.1.2"}
-  cnuernber/dtype-next            {:mvn/version "6.00-beta-19"}
   org.rauschig/jarchivelib {:mvn/version "1.1.0" }
-  clj-python/libpython-clj {:mvn/version "2.00-alpha-7"}
+  clj-python/libpython-clj {:mvn/version "2.00-beta-22"}
 
   }
 

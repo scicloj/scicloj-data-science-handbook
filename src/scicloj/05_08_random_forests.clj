@@ -4,18 +4,21 @@
 
 ["## Creating randomized Gaussian data"]
 
-(require '[fastmath.random :as random]
-         '[tech.v3.datatype :as dtype]
-         '[tech.v3.tensor :as tensor]
-         '[tech.v3.datatype.functional :as dtype-fun :refer
-           [+ - * /]]
-         '[tech.viz.vega :as viz]
-         '[tablecloth.api :as tablecloth]
-         '[aerial.hanami.common :as hanami-common]
-         '[aerial.hanami.templates :as hanami-templates]
-         '[scicloj.helpers.datasets :as datasets]
-         )
+["These notes, that have been using the tech.ml library, are obsolete. For an alternative, you may wish to look into [scicloj.ml](https://github.com/scicloj/scicloj.ml)."]
 
+;; (require '[fastmath.random :as random]
+;;          '[tech.v3.datatype :as dtype]
+;;          '[tech.v3.tensor :as tensor]
+;;          '[tech.v3.datatype.functional :as dtype-fun :refer
+;;            [+ - * /]]
+;;          '[tech.viz.vega :as viz]
+;;          '[tablecloth.api :as tablecloth]
+;;          '[aerial.hanami.common :as hanami-common]
+;;          '[aerial.hanami.templates :as hanami-templates]
+;;          '[scicloj.helpers.datasets :as datasets]
+;;          )
+
+^kind/hidden
 (comment
  ;; Manually start an empty notespaceff
  (notespace/init-with-browser)
@@ -28,129 +31,126 @@
 
 
 
+;; ^kind/vega
+;; (-> (random/rng :isaac 1123)
+;;     (datasets/make-blob 300 4 1)
+;;     (tablecloth/rows :as-maps)
+;;     (viz/scatterplot :x
+;;                      :y
+;;                      {:label-key :i}))
 
+;; (require '[tech.v3.ml :as ml]
+;;          '[tech.v3.libs.smile.classification]
+;;          '[tech.v3.libs.smile.regression]
+;;          '[tech.v3.dataset.modelling :as ds-mod]
+;;          '[tech.v3.dataset :as ds])
 
+;; (def original-dataset
+;;   (-> (random/rng :isaac 1123)
+;;       (datasets/make-blob 300 4 1)))
 
-^kind/vega
-(-> (random/rng :isaac 1123)
-    (datasets/make-blob 300 4 1)
-    (tablecloth/rows :as-maps)
-    (viz/scatterplot :x
-                     :y
-                     {:label-key :i}))
+;; ^kind/dataset
+;; original-dataset
 
-(require '[tech.v3.ml :as ml]
-         '[tech.v3.libs.smile.classification]
-         '[tech.v3.libs.smile.regression]
-         '[tech.v3.dataset.modelling :as ds-mod]
-         '[tech.v3.dataset :as ds])
+;; ^kind/vega
+;; (-> original-dataset
+;;     (tablecloth/rows :as-maps)
+;;     (viz/scatterplot
+;;       :x :y
+;;       {:label-key :i}))
 
-(def original-dataset
-  (-> (random/rng :isaac 1123)
-      (datasets/make-blob 300 4 1)))
+;; ^kind/vega
+;; (hanami-common/xform hanami-templates/point-chart
+;;                      :DATA (tablecloth/rows original-dataset :as-maps)
+;;                      :COLOR {:field :i :type "nominal"})
 
-^kind/dataset
-original-dataset
+;; (def prepared-data
+;;   (-> original-dataset
+;;       (ds/add-column
+;;         (ds/new-column :_i
+;;                        (map #(str "_" %) (original-dataset :i))
+;;                        {:categorical? true}))
+;;       (tablecloth/drop-columns [:i])
+;;       (ds/rename-columns {:_i :i})
+;;       (ds-mod/set-inference-target :i)
+;;       (ds/categorical->number [:i])))
 
-^kind/vega
-(-> original-dataset
-    (tablecloth/rows :as-maps)
-    (viz/scatterplot
-      :x :y
-      {:label-key :i}))
+;; ^kind/dataset-grid prepared-data
 
-^kind/vega
-(hanami-common/xform hanami-templates/point-chart
-                     :DATA (tablecloth/rows original-dataset :as-maps)
-                     :COLOR {:field :i :type "nominal"})
-
-(def prepared-data
-  (-> original-dataset
-      (ds/add-column
-        (ds/new-column :_i
-                       (map #(str "_" %) (original-dataset :i))
-                       {:categorical? true}))
-      (tablecloth/drop-columns [:i])
-      (ds/rename-columns {:_i :i})
-      (ds-mod/set-inference-target :i)
-      (ds/categorical->number [:i])))
-
-^kind/dataset-grid prepared-data
-
-(def trained-model
-  (ml/train prepared-data
-            {:model-type
-             :smile.classification/decision-tree}))
-
-;; (def trained-random
-;;   (ml/train blob
+;; (def trained-model
+;;   (ml/train prepared-data
 ;;             {:model-type
-;;              :smile.classification/random-forest}))
+;;              :smile.classification/decision-tree}))
 
-(defn column-range
-  [ds column step]
-  (range (apply min (get ds column))
-         (apply max (get ds column))
-         step))
+;; ;; (def trained-random
+;; ;;   (ml/train blob
+;; ;;             {:model-type
+;; ;;              :smile.classification/random-forest}))
 
-(def grid-maps
-  (for [x (column-range original-dataset :x 0.1)
-        y (column-range original-dataset :y 0.4)]
-    {:x x :y y}))
+;; (defn column-range
+;;   [ds column step]
+;;   (range (apply min (get ds column))
+;;          (apply max (get ds column))
+;;          step))
 
-(def grid
-  (tablecloth/dataset {:x (map :x grid-maps)
-                       :y (map :y grid-maps)}))
+;; (def grid-maps
+;;   (for [x (column-range original-dataset :x 0.1)
+;;         y (column-range original-dataset :y 0.4)]
+;;     {:x x :y y}))
 
-(def prediction-grid
-  (-> (ml/predict grid trained-model)
-      (tablecloth/select-columns :i)
-      (ds-mod/column-values->categorical :i)))
+;; (def grid
+;;   (tablecloth/dataset {:x (map :x grid-maps)
+;;                        :y (map :y grid-maps)}))
 
-(def grid-with-preds
-  (tablecloth/add-or-replace-column grid
-                                    :i
-                                    prediction-grid))
+;; (def prediction-grid
+;;   (-> (ml/predict grid trained-model)
+;;       (tablecloth/select-columns :i)
+;;       (ds-mod/column-values->categorical :i)))
 
-^kind/dataset-grid grid-with-preds
+;; (def grid-with-preds
+;;   (tablecloth/add-or-replace-column grid
+;;                                     :i
+;;                                     prediction-grid))
 
-
-(def grid-with-preds-data
-  (tablecloth/rows grid-with-preds :as-maps))
-
-^kind/vega
-(viz/scatterplot grid-with-preds-data
-                 :x
-                 :y
-                 {:label-key :i})
+;; ^kind/dataset-grid grid-with-preds
 
 
-(defn hanami-plot
-  "Syntactic sugar for hanami plots, lets you pipe data directly in a thread first macro"
-  [dataset template & substitutions]
-  (apply hanami-common/xform
-         template
-         :DATA
-         (tablecloth/rows dataset :as-maps)
-         substitutions))
+;; (def grid-with-preds-data
+;;   (tablecloth/rows grid-with-preds :as-maps))
 
-^kind/vega
-(-> grid-with-preds
-    (hanami-plot hanami-templates/point-chart
-                 :WIDTH 600
-                 :COLOR {:field :i :type "nominal"})
-    ;; add original categories as a layer
-    (assoc :mark {:type "square" :size 40}))
+;; ^kind/vega
+;; (viz/scatterplot grid-with-preds-data
+;;                  :x
+;;                  :y
+;;                  {:label-key :i})
 
 
-^kind/vega
-(hanami-common/xform hanami-templates/layer-chart
-                     :LAYER [(-> grid-with-preds
-                                 (hanami-plot hanami-templates/point-chart
-                                              :WIDTH 600
-                                              :COLOR {:field :i :type "nominal"})
-                                 ;; add original categories as a layer
-                                 (assoc :mark {:type "square" :size 40}))
-                             (-> original-dataset
-                                 (hanami-plot hanami-templates/point-chart
-                                              :COLOR {:field :i :type "nominal"}))])
+;; (defn hanami-plot
+;;   "Syntactic sugar for hanami plots, lets you pipe data directly in a thread first macro"
+;;   [dataset template & substitutions]
+;;   (apply hanami-common/xform
+;;          template
+;;          :DATA
+;;          (tablecloth/rows dataset :as-maps)
+;;          substitutions))
+
+;; ^kind/vega
+;; (-> grid-with-preds
+;;     (hanami-plot hanami-templates/point-chart
+;;                  :WIDTH 600
+;;                  :COLOR {:field :i :type "nominal"})
+;;     ;; add original categories as a layer
+;;     (assoc :mark {:type "square" :size 40}))
+
+
+;; ^kind/vega
+;; (hanami-common/xform hanami-templates/layer-chart
+;;                      :LAYER [(-> grid-with-preds
+;;                                  (hanami-plot hanami-templates/point-chart
+;;                                               :WIDTH 600
+;;                                               :COLOR {:field :i :type "nominal"})
+;;                                  ;; add original categories as a layer
+;;                                  (assoc :mark {:type "square" :size 40}))
+;;                              (-> original-dataset
+;;                                  (hanami-plot hanami-templates/point-chart
+;;                                               :COLOR {:field :i :type "nominal"}))])
