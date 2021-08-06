@@ -5,12 +5,12 @@
  {org.clojure/clojure {:mvn/version "1.10.3"}
 
   scicloj/notespace  {:mvn/version "3-beta7"}
-  scicloj/tablecloth {:mvn/version "6.002"}
+  scicloj/tablecloth {:mvn/version "6.006"}
 
   aerial.hanami/aerial.hanami {:mvn/version "0.12.7"}
   generateme/fastmath         {:mvn/version "2.1.5"}
   techascent/tech.viz         {:mvn/version "6.00-beta-16-2"}
-  techascent/tech.ml          {:mvn/version "5.00-beta-13-SNAPSHOT"}
+  techascent/tech.ml          {:mvn/version "6.001"}
 
   ;; applied-science/darkstar {:git/url "https://github.com/applied-science/darkstar"
   ;;                           :sha "541a3ff36065c59e92fe6aa61e41a4385ba6f893"}
