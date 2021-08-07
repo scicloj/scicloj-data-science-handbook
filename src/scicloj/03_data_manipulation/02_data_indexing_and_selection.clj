@@ -1,7 +1,8 @@
 (ns scicloj.03-data-manipulation.02-data-indexing-and-selection
   (:require [notespace.api :as notespace]
             [notespace.kinds :as kind]
-            [clojure.java.io :as io]))
+            [clojure.java.io :as io]
+            [tablecloth.api :as tablecloth]))
 
 ;; Notespace
 ^kind/hidden
@@ -24,7 +25,6 @@ accessing and modifying values in Dataset objects. If you have used the clojure
 patterns, the corresponding patterns in dataset will feel very familiar, though
 there are a few quirks to be aware of."]
 
-#_["# Data Selection in Series(skip this section)"]
 
 ["# Data Selection in Dataset"]
 
@@ -32,7 +32,7 @@ there are a few quirks to be aware of."]
 can be helpful to keep in mind as we explore data selection within this
 structure."]
 
-["## DataFrame as a map"]
+["## Dataset as a map"]
 
 ["The first analogy we will consider is the Dataset as a map of related Column
 objects. Let's return to our example of areas and populations of states:"]
@@ -46,8 +46,16 @@ objects. Let's return to our example of areas and populations of states:"]
                                  :population population}))
 ^kind/dataset
 states
+;; => _unnamed [5 3]:
+;;    |      :name |  :area | :population |
+;;    |------------|-------:|------------:|
+;;    | California | 423967 |    38332521 |
+;;    |      Texas | 695662 |    26448193 |
+;;    |   New York | 141297 |    19651127 |
+;;    |    Florida | 170312 |    19552860 |
+;;    |   Illinois | 149995 |    12882135 |
 
-["The individual Column that make up the DataFrame can be accessed via map-style
+["The individual Column that make up the Dataset can be accessed via map-style
 indexing of the column name:"]
 
 (states :area)
@@ -78,67 +86,103 @@ can also be used to modify the object, in this case adding a new column:"]
 
 (require '[tech.v3.datatype.functional :as dfn])
 
-(def states (assoc states :density (dfn// (states :population) (states :area))))
+(def states
+  (tablecloth/add-columns states {:density #(dfn// (% :population) (% :area))}))
 ^kind/dataset
 states
+;; => _unnamed [5 4]:
+;;    |      :name |  :area | :population | :density |
+;;    |------------|-------:|------------:|---------:|
+;;    | California | 423967 |    38332521 |       90 |
+;;    |      Texas | 695662 |    26448193 |       38 |
+;;    |   New York | 141297 |    19651127 |      139 |
+;;    |    Florida | 170312 |    19552860 |      114 |
+;;    |   Illinois | 149995 |    12882135 |       85 |
+
 
 ["This shows a preview of the straightforward syntax of element-by-element
 arithmetic between Column objects; we'll dig into this further in Operating on
 Data in Dataset."]
 
-["## Dataset as two-dimensional array"]
+["## Dataset as two-dimensional vector"]
 
 ["As mentioned previously, we can also view the Dataset as an enhanced
-two-dimensional array. We can examine the raw underlying data array using the
+two-dimensional vector. We can examine the raw underlying data array using the
 values attribute:"]
 
-;; TODO how to convert all dataset to arrays?
+;; TODO: how to convert all dataset to arrays?
 
 ["With this picture in mind, many familiar array-like observations can be done
-on the DataFrame itself. For example, we can transpose the full DataFrame to
-swap rows and columns:"]
+on the Dataset itself. For example, we can transpose the full Dataset to swap
+rows and columns:"]
 
 ;; TODO: How to transpose?
 
 ["When it comes to indexing of Dataset objects, however, it is clear that the
 map-style indexing of columns precludes our ability to simply treat it as a
-NumPy array. In particular, passing a single index to an array accesses a row:"]
+clojure vector. In particular, passing a single index to an array accesses a
+row:"]
 
 ^kind/dataset
 (tablecloth/select-rows states 0)
+;; => _unnamed [1 4]:
+;;    |      :name |  :area | :population | :density |
+;;    |------------|-------:|------------:|---------:|
+;;    | California | 423967 |    38332521 |       90 |
 
-["and passing a single \"index\" to a Dataset accesses a column:"]
+["and passing a single 'column name' to a Dataset accesses a column:"]
 
 ^kind/dataset
-(states :area)
+(tablecloth/select-columns states :area)
+;; => _unnamed [5 1]:
+;;    |  :area |
+;;    |-------:|
+;;    | 423967 |
+;;    | 695662 |
+;;    | 141297 |
+;;    | 170312 |
+;;    | 149995 |
 
-["Thus for array-style indexing, we need another convention. Here Pandas again
-uses the loc, iloc, and ix indexers mentioned earlier. Using the iloc indexer,
-we can index the underlying array as if it is a simple NumPy array (using the
-implicit Python-style index), but the DataFrame index and column labels are
-maintained in the result:"]
-
-;; TODO: loc, iloc and ix is not available in dataset
+["Thus for array-style indexing, we need another convention. Here tablecloth
+uses `select' method. The dataset column labels are maintained in the result:"]
 
 ^kind/dataset
 (tablecloth/select states [:name :area :population] (range 3))
+;; => _unnamed [3 3]:
+;;    |      :name |  :area | :population |
+;;    |------------|-------:|------------:|
+;;    | California | 423967 |    38332521 |
+;;    |      Texas | 695662 |    26448193 |
+;;    |   New York | 141297 |    19651127 |
 
-["Any of the familiar NumPy-style data access patterns can be used within these
-indexers. For example, in the loc indexer we can combine masking and fancy
+["Any of the familiar array-style data access patterns can be used within these
+indexers. For example, in the `select' function we can combine masking and fancy
 indexing as in the following:"]
 
 ^kind/dataset
 (tablecloth/select states [:name :population :density] #(> (:density %) 100))
+;; => _unnamed [2 3]:
+;;    |    :name | :population | :density |
+;;    |----------|------------:|---------:|
+;;    | New York |    19651127 |      139 |
+;;    |  Florida |    19552860 |      114 |
 
-["Any of these indexing conventions may also be used to set or modify values;
-this is done in the standard way that you might be accustomed to from working
-with NumPy:"]
+["Any of these indexing conventions may also be used to set or modify values:"]
 
-;; TODO: update-columns cannot update with value
+;; TODO: update-columns cannot update with plain value
+
 ^kind/dataset
 (tablecloth/update-columns states [:density] (fn [x] 90))
+;; => _unnamed [5 4]:
+;;    |      :name |  :area | :population | :density |
+;;    |------------|-------:|------------:|---------:|
+;;    | California | 423967 |    38332521 |       90 |
+;;    |      Texas | 695662 |    26448193 |       90 |
+;;    |   New York | 141297 |    19651127 |       90 |
+;;    |    Florida | 170312 |    19552860 |       90 |
+;;    |   Illinois | 149995 |    12882135 |       90 |
 
-["To build up your fluency in Pandas data manipulation, I suggest spending some
+["To build up your fluency in dataset data manipulation, I suggest spending some
 time with a simple DataFrame and exploring the types of indexing, slicing,
 masking, and fancy indexing that are allowed by these various indexing
 approaches."]
@@ -149,22 +193,38 @@ approaches."]
 preceding discussion, but nevertheless can be very useful in practice. First,
 while indexing refers to columns, slicing refers to rows:"]
 
+;; TODO
+
 ["select rows with seq of row ids and seq of true/false:"]
+
+;; TODO
 
 ["Such slices can also refer to rows by number rather than by index:"]
 
 ^kind/dataset
 (tablecloth/select-rows states [0 1 2])
+;; => _unnamed [3 4]:
+;;    |      :name |  :area | :population | :density |
+;;    |------------|-------:|------------:|---------:|
+;;    | California | 423967 |    38332521 |       90 |
+;;    |      Texas | 695662 |    26448193 |       38 |
+;;    |   New York | 141297 |    19651127 |      139 |
 
 ^kind/dataset
 (tablecloth/select-rows states [true false true])
+;; => _unnamed [2 4]:
+;;    |      :name |  :area | :population | :density |
+;;    |------------|-------:|------------:|---------:|
+;;    | California | 423967 |    38332521 |       90 |
+;;    |   New York | 141297 |    19651127 |      139 |
 
 ["Similarly, direct masking operations are also interpreted row-wise rather than
 column-wise:"]
 
 ^kind/dataset
 (tablecloth/select-rows states #(> (:density %) 100))
-
-["These two conventions are syntactically similar to those on a NumPy array, and
-while these may not precisely fit the mold of the Pandas conventions, they are
-nevertheless quite useful in practice."]
+;; => _unnamed [2 4]:
+;;    |    :name |  :area | :population | :density |
+;;    |----------|-------:|------------:|---------:|
+;;    | New York | 141297 |    19651127 |      139 |
+;;    |  Florida | 170312 |    19552860 |      114 |
