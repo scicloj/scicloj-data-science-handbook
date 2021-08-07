@@ -57,6 +57,8 @@ version:"]
 ^kind/naive
 (get-in (read-string (slurp "deps.edn"))
         [:deps 'scicloj/tablecloth :mvn/version])
+;; => "6.006"
+
 
 ;; TODO: shall we put tablecloth version info to API interface?
 ;; for example: tablecloth.api/version
