@@ -2,7 +2,8 @@
   (:require [notespace.api :as notespace]
             [notespace.kinds :as kind]
             [clojure.java.io :as io]
-            [tablecloth.api :as tablecloth]))
+            [tablecloth.api :as tablecloth]
+            [tech.v3.dataset :as dataset]))
 
 ;; Notespace
 ^kind/hidden
@@ -81,8 +82,7 @@ the map-style access:"]
 cases! For example, if the column names are not keywords, this keyword-style
 access is not possible."]
 
-["Like with the Series objects discussed earlier, this dictionary-style syntax
-can also be used to modify the object, in this case adding a new column:"]
+["To add new columns, we can use the add-columns API:"]
 
 (require '[tech.v3.datatype.functional :as dfn])
 
@@ -217,6 +217,40 @@ while indexing refers to columns, slicing refers to rows:"]
 ;;    |------------|-------:|------------:|---------:|
 ;;    | California | 423967 |    38332521 |       90 |
 ;;    |   New York | 141297 |    19651127 |      139 |
+
+["tech.ml.dataset has additional 'select-by-index' interface, to specify column
+and row index in vector:"]
+
+^kind/dataset
+(dataset/select-by-index states [0 1] [0 2])
+;; => _unnamed [2 2]:
+;;    |      :name |  :area |
+;;    |------------|-------:|
+;;    | California | 423967 |
+;;    |   New York | 141297 |
+
+["or 'select-columns-by-index':"]
+
+^kind/dataset
+(dataset/select-columns-by-index states [0 3])
+;; => _unnamed [5 2]:
+;;    |      :name | :density |
+;;    |------------|---------:|
+;;    | California |       90 |
+;;    |      Texas |       38 |
+;;    |   New York |      139 |
+;;    |    Florida |      114 |
+;;    |   Illinois |       85 |
+
+["you can even use negative index:"]
+
+(dataset/select-rows-by-index states [-1 0 -2])
+;; => _unnamed [3 4]:
+;;    |      :name |  :area | :population | :density |
+;;    |------------|-------:|------------:|---------:|
+;;    |   Illinois | 149995 |    12882135 |       85 |
+;;    | California | 423967 |    38332521 |       90 |
+;;    |    Florida | 170312 |    19552860 |      114 |
 
 ["Similarly, direct masking operations are also interpreted row-wise rather than
 column-wise:"]
