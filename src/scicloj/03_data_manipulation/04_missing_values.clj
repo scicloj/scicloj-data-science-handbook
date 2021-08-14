@@ -26,14 +26,14 @@ more complicated, different data sources may indicate missing data in different
 ways.
 
 In this section, we will discuss some general considerations for missing data,
-discuss how Pandas chooses to represent it, and demonstrate some built-in Pandas
-tools for handling missing data in Python. Here and throughout the book, we'll
-refer to missing data in general as null, NaN, or NA values."]
+discuss how tech.ml.dataset chooses to represent it, and demonstrate some
+built-in tools for handling missing data in Clojure. Here and throughout the
+book, we'll refer to missing data in general as nil, NaN, or NA values."]
 
 ["## Trade-Offs in Missing Data Conventions"]
 
 ["There are a number of schemes that have been developed to indicate the
-presence of missing data in a table or DataFrame. Generally, they revolve around
+presence of missing data in a table or dataset. Generally, they revolve around
 one of two strategies: using a mask that globally indicates missing values, or
 choosing a sentinel value that indicates a missing entry.
 
@@ -98,19 +98,55 @@ arrays with data type 'object' (i.e., arrays of Python objects):"]
 
 (require '[tablecloth.api :as tablecloth]
          '[tech.v3.dataset :as ds]
-         '[tech.v3.datatype.functional :as dfn])
+         '[tech.v3.datatype.functional :as dfn]
+         '[tech.v3.datatype.statistics :as dstat])
 
 (def vals1 (tablecloth/dataset {:A [1 nil 3 4]}))
 
 ^kind/dataset
 vals1
+;; => _unnamed [4 1]:
+;;    | :A |
+;;    |---:|
+;;    |  1 |
+;;    |    |
+;;    |  3 |
+;;    |  4 |
 
 (ds/brief vals1)
+;; => ({:min 1.0,
+;;      :n-missing 1,
+;;      :col-name :A,
+;;      :mean 2.6666666666666665,
+;;      :datatype :int64,
+;;      :skew -0.9352195295828236,
+;;      :standard-deviation 1.5275252316519465,
+;;      :quartile-3 4.0,
+;;      :n-valid 3,
+;;      :quartile-1 1.0,
+;;      :median 3.0,
+;;      :max 4.0,
+;;      :first 1,
+;;      :last 4})
 
-["It is different from Pandas dataframe that missing value is just ignored in
+["Missing value is just ignored or taken as zero in numerical calculation
 tech.ml.dataset:"]
 
+(dstat/sum (vals1 :A))
+;; => 8.0
+
+["the missing slot is even not taken into consideration when calculating the
+average value with mean:"]
+
+(dstat/mean (vals1 :A))
+;; => 2.6666666666666665
+
+["We also noticed that dtype.functional functions cannot deal with NaN values,
+thus the following will give a bad answer:"]
+
 (dfn/sum (vals1 :A))
+;; => -9.223372036854776E18
+
 
 ["## Operating on Missing Values"]
 
