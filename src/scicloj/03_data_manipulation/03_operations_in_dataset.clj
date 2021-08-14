@@ -19,7 +19,7 @@
 
 ["# Operating on Data in Dataset"]
 
-["One of the essential pieces of NumPy is the ability to perform quick
+["One of the essential pieces of Dataset is the ability to perform quick
 element-wise operations, both with basic arithmetic (addition, subtraction,
 multiplication, etc.) and with more sophisticated operations (trigonometric
 functions, exponential and logarithmic functions, etc.). Pandas inherits much of
@@ -40,67 +40,89 @@ and two-dimensional DataFrame structures."]
   '[tech.v3.dataset :as ds]
   '[tech.v3.datatype :as dtype]
   '[tech.v3.datatype.functional :as dfn]
-  '[tablecloth.api :as tablecloth]
-  '[fastmath.random :as fm.rand])
+  '[tablecloth.api :as tablecloth])
+
+["## Index Preservation"]
 
 (def DS
   (tablecloth/dataset
    (zipmap [:A :B :C :D]
-           (repeatedly 4 (fn [] (repeatedly 3 #(fm.rand/frand 10)))))))
+           (repeatedly 4 (fn [] (repeatedly 3 #(rand 10)))))))
 
 ^kind/dataset
 DS
+;; => _unnamed [3 4]:
+;;    |         :A |         :B |         :C |         :D |
+;;    |-----------:|-----------:|-----------:|-----------:|
+;;    | 9.60562809 | 8.55226726 | 2.23421807 | 4.00705231 |
+;;    | 4.04167810 | 8.44119331 | 5.65535994 | 2.44606411 |
+;;    | 5.81259846 | 7.59271646 | 0.31749207 | 6.31114879 |
 
-["If we apply a NumPy ufunc on either of these objects, the result will be
-another Pandas object with the indices preserved:"]
+
+["If we apply a datatype functional func on either of these objects, the result
+will be another dataset object with the indices preserved:"]
 
 ^kind/dataset
 (ds/update-elemwise DS dfn/exp)
+;; => _unnamed [3 4]:
+;;    |             :A |            :B |           :C |           :D |
+;;    |---------------:|--------------:|-------------:|-------------:|
+;;    | 14848.11334084 | 5178.48210835 |   9.33917639 |  54.98455391 |
+;;    |    56.92178329 | 4634.08158596 | 285.81934239 |  11.54282595 |
+;;    |   334.48714785 | 1983.69482239 |   1.37367836 | 550.67719712 |
 
 ["Or, for a slightly more complex calculation:"]
 
 ^kind/dataset
-(ds/update-elemwise DS #(dfn// (dfn/* % Math/PI)))
+(ds/update-elemwise DS #(dfn// (dfn/* % Math/PI) 4.0))
+;; => _unnamed [3 4]:
+;;    |         :A |         :B |         :C |         :D |
+;;    |-----------:|-----------:|-----------:|-----------:|
+;;    | 7.54424266 | 6.71693500 | 1.75475077 | 3.14713152 |
+;;    | 3.17432656 | 6.62969772 | 4.44170931 | 1.92113426 |
+;;    | 4.56520415 | 5.96330556 | 0.24935769 | 4.95676467 |
 
-["Any of the ufuncs discussed in Computation on NumPy Arrays: Universal
-Functions can be used in a similar manner."]
 
-["## UFuncs: Index Alignment"]
+["Any of the datatype functional functions can be used in a similar manner."]
 
-["For binary operations on two Series or DataFrame objects, Pandas will align
-indices in the process of performing the operation. This is very convenient when
-working with incomplete data, as we'll see in some of the examples that
-follow."]
+["## Index Alignment"]
+
+["For binary operations on two Dataset objects, it will align indices in the
+process of performing the operation. This is very convenient when working with
+incomplete data, as we'll see in some of the examples that follow."]
 
 ["### Index alignment in Dataset"]
 
 ["A similar type of alignment takes place for both columns and indices when
-performing operations on DataFrames:"]
+performing operations on Datasets:"]
 
 (def A
   (tablecloth/dataset
    (zipmap [:A :B]
-           (repeatedly 2 (fn [] (repeatedly 2 #(fm.rand/irand 20)))))))
+           (repeatedly 2 (fn [] (repeatedly 2 #(rand-int 20)))))))
+
 ^kind/dataset
 A
 ;; => _unnamed [2 2]:
 ;;    | :A | :B |
-;;    |----|----|
-;;    |  1 |  7 |
-;;    |  7 | 18 |
+;;    |---:|---:|
+;;    |  1 |  4 |
+;;    |  4 |  0 |
 
 (def B
   (tablecloth/dataset
    (zipmap [:B :A :C]
-           (repeatedly 3 (fn [] (repeatedly 3 #(fm.rand/irand 20)))))))
+           (repeatedly 3 (fn [] (repeatedly 3 #(rand-int 20)))))))
+
 ^kind/dataset
 B
 ;; => _unnamed [3 3]:
 ;;    | :B | :A | :C |
-;;    |----|----|----|
-;;    |  8 |  5 | 11 |
-;;    |  2 | 15 | 13 |
-;;    |  9 |  3 |  3 |
+;;    |---:|---:|---:|
+;;    | 13 |  0 |  2 |
+;;    | 10 | 11 |  8 |
+;;    |  8 |  9 |  0 |
+
 
 ;; TODO: How to A + B?
 ;; (tablecloth/+ A B)?
