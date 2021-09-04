@@ -1,7 +1,8 @@
 (ns scicloj.03-data-manipulation.03-operations-in-dataset
   (:require [notespace.api :as notespace]
             [notespace.kinds :as kind]
-            [clojure.java.io :as io]))
+            [clojure.java.io :as io]
+            [tablecloth.api :as tablecloth]))
 
 ;; Notespace
 ^kind/hidden
@@ -40,6 +41,7 @@ and two-dimensional DataFrame structures."]
   '[tech.v3.dataset :as ds]
   '[tech.v3.datatype :as dtype]
   '[tech.v3.datatype.functional :as dfn]
+  '[tech.v3.dataset.column :as dcol]
   '[tablecloth.api :as tablecloth])
 
 ["## Index Preservation"]
@@ -102,12 +104,11 @@ performing operations on Datasets:"]
            (repeatedly 2 (fn [] (repeatedly 2 #(rand-int 20)))))))
 
 ^kind/dataset
-A
-;; => _unnamed [2 2]:
+A;; => _unnamed [2 2]:
 ;;    | :A | :B |
 ;;    |---:|---:|
-;;    |  1 |  4 |
-;;    |  4 |  0 |
+;;    | 16 |  7 |
+;;    |  3 |  1 |
 
 (def B
   (tablecloth/dataset
@@ -115,17 +116,47 @@ A
            (repeatedly 3 (fn [] (repeatedly 3 #(rand-int 20)))))))
 
 ^kind/dataset
-B
-;; => _unnamed [3 3]:
+B;; => _unnamed [3 3]:
 ;;    | :B | :A | :C |
 ;;    |---:|---:|---:|
-;;    | 13 |  0 |  2 |
-;;    | 10 | 11 |  8 |
-;;    |  8 |  9 |  0 |
+;;    | 18 |  0 |  9 |
+;;    |  8 | 12 |  8 |
+;;    | 16 |  6 |  7 |
 
 
-;; TODO: How to A + B?
-;; (tablecloth/+ A B)?
+["Now, lets create some function to add two dataset in different
+shape. The prerequisite is that these two dataset contains numerical
+values."]
+
+(defn add-columns-with-same-name [ds colname]
+  (->> (tablecloth/select-columns ds colname)
+       (ds/columns)
+       (reduce dfn/+)
+       (ds/new-column colname)
+       (vector)
+       (ds/new-dataset)))
+
+(defn aggregate-columns [ds]
+  (let [col-names (distinct (tablecloth/column-names ds))]
+    (->> col-names
+         (map #(add-columns-with-same-name ds %))
+         (reduce tablecloth/append))))
+
+(defn dataset-add [ds1 ds2]
+  (aggregate-columns (tablecloth/append ds1 ds2)))
+
+["TODO: Oops, the answer is wrong. tablecloth/select-columns will only
+duplicate the first specified column twice!"]
+
+^kind/dataset
+(dataset-add A B)
+;; => _unnamed [3 3]:
+;;    | :A | :B | :C |
+;;    |---:|---:|---:|
+;;    |  0 | 36 |  9 |
+;;    | 24 | 16 |  8 |
+;;    | 12 | 32 |  7 |
+
 
 ["Notice that indices are aligned correctly irrespective of their order in the
 two objects, and indices in the result are sorted. As was the case with Series,
